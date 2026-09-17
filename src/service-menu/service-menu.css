@@ -1,0 +1,250 @@
+/*
+ * 서비스 오가기 메뉴바의 생김새.
+ *
+ * ── 왜 Tailwind 유틸리티가 아니라 제 CSS 인가 ────────────────────────────
+ * 다섯 사이트가 전부 Tailwind v4 를 쓰지만, **다크 모드를 켜는 방식이
+ * 서로 다르다**:
+ *   - RF_Service_System : `@custom-variant dark (&:where(.dark, .dark *))`
+ *                         — 클래스로 켠다(사용자가 고른 테마).
+ *   - njlee(계측기)      : 다크 변형을 정의하지 않았고 `color-scheme: light`
+ *                         로 **라이트 고정**이다.
+ * 이 상태에서 `dark:bg-…` 같은 유틸리티를 그대로 실으면 Tailwind 기본값인
+ * `prefers-color-scheme` 이 적용되어, 계측기에서는 OS 가 어두운 사람에게만
+ * **이 띠 하나만** 까맣게 뜬다. 나머지 화면은 하얀 채로.
+ * 게다가 Tailwind v4 는 node_modules 안을 훑지 않으므로, 유틸리티로 짜면
+ * 사이트마다 `@source` 한 줄을 또 넣어야 한다 — 어차피 한 줄 넣을 거라면
+ * 그 한 줄이 이 CSS 파일 import 인 편이 낫다(번들러·프레임워크를 안 탄다).
+ *
+ * ── 색은 전부 변수다 ─────────────────────────────────────────────────────
+ * 사이트가 제 색으로 맞추고 싶으면 `.dss-menu { --dss-menu-bg: … }` 한 줄로
+ * 덮는다. 규칙을 통째로 베껴 고치지 않아도 되게 하려는 것이다.
+ *
+ * 🔴 여기 있는 `--dss-menu-*` 변수는 **라이트와 다크에 같은 이름이 다 있어야
+ *    한다**. 한쪽에만 있으면 그 색만 반대 모드 값을 물려받아 글자가
+ *    바탕에 묻는다 — service-menu.css.test.ts 가 두 벌을 대조해 막는다.
+ */
+
+/* ── 라이트(기본값) ─────────────────────────────────────────────────────
+ *
+ * 이 띠는 사이트 머리말 **위**에 앉는다. 그래서 머리말(대개 흰색)보다 한 단
+ * 눌린 바탕(zinc-100)을 쓰고, 지금 있는 칸만 머리말과 같은 흰색으로 띄운다 —
+ * 브라우저 탭과 같은 읽는 법이라 설명이 필요 없다.
+ */
+.dss-menu {
+  --dss-menu-bg: #f4f4f5;
+  --dss-menu-border: #e4e4e7;
+  --dss-menu-fg: #52525b;
+  --dss-menu-fg-hover: #18181b;
+  --dss-menu-bg-hover: #e4e4e7;
+  --dss-menu-current-bg: #ffffff;
+  --dss-menu-current-fg: #18181b;
+  --dss-menu-accent: #18181b;
+  --dss-menu-color-scheme: light;
+
+  /*
+   * 화면 맨 위 인셋. 기본은 0 이라 대부분의 화면에서 아무 일도 없다.
+   * viewport-fit=cover 로 상태 표시줄 밑까지 화면을 쓰는 사이트
+   * (RF_Service_System) 가 이 띠를 맨 위에 둘 때만
+   *   .dss-menu { --dss-menu-inset-top: env(safe-area-inset-top); }
+   * 로 켜고, 그 사이트의 머리말에서는 같은 인셋을 **뺀다**. 둘 다 두면
+   * 노치 높이만큼 두 번 밀린다.
+   */
+  --dss-menu-inset-top: 0px;
+
+  color-scheme: var(--dss-menu-color-scheme);
+  background-color: var(--dss-menu-bg);
+  border-bottom: 1px solid var(--dss-menu-border);
+  padding-top: var(--dss-menu-inset-top);
+
+  /* 글꼴은 사이트 것을 그대로 쓴다 — 여기서 정하면 다섯 사이트에서
+     이 띠만 다른 글꼴이 된다. */
+  font-family: inherit;
+}
+
+/* Tailwind preflight 이 없는 곳(미래의 어떤 사이트)에서도 배치가 무너지지
+   않게 이 안쪽만 border-box 로 못 박는다. 바깥에는 손대지 않는다. */
+.dss-menu,
+.dss-menu *,
+.dss-menu *::before,
+.dss-menu *::after {
+  box-sizing: border-box;
+}
+
+/*
+ * 가로로 넘치면 **띠 안에서만** 굴러간다.
+ *
+ * 서비스가 다섯에서 열로 늘어도, 폰(360px)에서 봐도 페이지 전체가
+ * 가로로 밀리지 않게 하는 선이다. overscroll-behavior 는 띠 끝까지 민
+ * 스크롤이 페이지로 새는 것(폰에서 화면이 통째로 튀는 그 동작)을 막는다.
+ */
+.dss-menu__list {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  margin: 0;
+  padding: 0 6px;
+  list-style: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 칸은 줄어들지 않는다 — 좁은 화면에서 이름이 뭉개지는 대신 굴러가게 한다.
+   이름을 줄이면 "A/S 관…" 같은 것이 되어 어느 시스템인지 못 읽는다. */
+.dss-menu__item {
+  display: flex;
+  flex: 0 0 auto;
+}
+
+.dss-menu__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 10px;
+  /* 위쪽만 둥글다 — 아래는 머리말에 붙는 탭이라 각져야 이어져 보인다. */
+  border-radius: 6px 6px 0 0;
+  color: var(--dss-menu-fg);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+/* 손가락으로 누르는 화면에서는 34px 이 작다(권고 44px). 폰에서만 키운다 —
+   컴퓨터에서 띠가 두꺼워지면 본문이 그만큼 줄어든다. */
+@media (pointer: coarse) {
+  .dss-menu__link {
+    min-height: 40px;
+    padding: 0 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dss-menu__link {
+    transition: none;
+  }
+}
+
+.dss-menu__link:hover {
+  background-color: var(--dss-menu-bg-hover);
+  color: var(--dss-menu-fg-hover);
+}
+
+/*
+ * 키보드 초점 테두리. outline-offset 이 음수인 이유: 칸 바깥으로 그리면
+ * 굴러가는 목록에서 테두리 절반이 잘린다.
+ * :focus-visible 만 쓴다 — 마우스로 눌렀을 때까지 테두리가 남으면
+ * 지저분하다.
+ */
+.dss-menu__link:focus-visible {
+  outline: 2px solid var(--dss-menu-accent);
+  outline-offset: -2px;
+}
+
+/*
+ * 지금 있는 서비스.
+ *
+ * 색 하나로만 알리지 않는다(UI_GUIDELINE 7절): 바탕이 밝아지고, 글자가
+ * 진해지고, 굵어지고, 아래에 2px 줄이 그어진다 — 흑백으로 인쇄해도,
+ * 색을 구분하지 못해도 읽힌다. 마크업 쪽에는 aria-current="page" 가 따로
+ * 붙어 화면 낭독기에도 전달된다.
+ */
+.dss-menu__link[data-current="true"] {
+  background-color: var(--dss-menu-current-bg);
+  color: var(--dss-menu-current-fg);
+  font-weight: 600;
+  /* box-shadow inset 으로 긋는다 — border 로 그으면 칸 높이가 2px 달라져
+     지금 칸만 아래로 밀린다. */
+  box-shadow: inset 0 -2px 0 0 var(--dss-menu-accent);
+}
+
+.dss-menu__link[data-current="true"]:hover {
+  background-color: var(--dss-menu-current-bg);
+  color: var(--dss-menu-current-fg);
+}
+
+.dss-menu__icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.dss-menu__name {
+  /* 이모지와 한글의 기준선이 어긋나 보이는 것을 막는다. */
+  display: inline-block;
+}
+
+/* ── 다크 ────────────────────────────────────────────────────────────────
+ *
+ * 세 가지 신호를 받는다. 앞의 둘은 **사이트가 이미 쓰고 있는 표시**라
+ * 사이트가 따로 할 일이 없고(A/S 는 <html class="dark">), 셋째는 이 띠만
+ * 따로 고정하고 싶을 때다.
+ *
+ * 값은 라이트의 거울이다: 머리말(dark 에서 zinc-900)보다 한 단 더 어두운
+ * 바탕에, 지금 칸만 머리말과 같은 색으로 띄운다.
+ */
+.dark .dss-menu,
+[data-theme="dark"] .dss-menu,
+.dss-menu[data-color-scheme="dark"] {
+  --dss-menu-bg: #09090b;
+  --dss-menu-border: #27272a;
+  --dss-menu-fg: #a1a1aa;
+  --dss-menu-fg-hover: #fafafa;
+  --dss-menu-bg-hover: #18181b;
+  --dss-menu-current-bg: #18181b;
+  --dss-menu-current-fg: #fafafa;
+  --dss-menu-accent: #fafafa;
+  --dss-menu-color-scheme: dark;
+}
+
+/*
+ * OS 설정을 따르는 사이트용. colorScheme="system" 을 넘긴 띠에만 걸린다 —
+ * 이 규칙이 무조건 걸리면 라이트로 고정한 사이트(계측기)에서 이 띠만
+ * 까매진다. 바로 그 사고를 막으려고 기본값이 "host" 다.
+ */
+@media (prefers-color-scheme: dark) {
+  .dss-menu[data-color-scheme="system"] {
+    --dss-menu-bg: #09090b;
+    --dss-menu-border: #27272a;
+    --dss-menu-fg: #a1a1aa;
+    --dss-menu-fg-hover: #fafafa;
+    --dss-menu-bg-hover: #18181b;
+    --dss-menu-current-bg: #18181b;
+    --dss-menu-current-fg: #fafafa;
+    --dss-menu-accent: #fafafa;
+    --dss-menu-color-scheme: dark;
+  }
+}
+
+/*
+ * 라이트 고정은 **맨 뒤**에 둔다. 위의 `.dark .dss-menu` 와 우선순위가
+ * 같아서(둘 다 0-2-0), 나중에 적힌 이것이 이긴다 — 다크인 사이트에서도
+ * colorScheme="light" 를 넘기면 밝게 나온다.
+ */
+.dss-menu[data-color-scheme="light"] {
+  --dss-menu-bg: #f4f4f5;
+  --dss-menu-border: #e4e4e7;
+  --dss-menu-fg: #52525b;
+  --dss-menu-fg-hover: #18181b;
+  --dss-menu-bg-hover: #e4e4e7;
+  --dss-menu-current-bg: #ffffff;
+  --dss-menu-current-fg: #18181b;
+  --dss-menu-accent: #18181b;
+  --dss-menu-color-scheme: light;
+}
+
+/*
+ * 인쇄에는 나오지 않는다. 계측기는 목록을 종이로 뽑고(njlee 의 .no-print),
+ * A/S 도 견적서를 찍는다 — 종이에 남을 이유가 없는 화면 장치다.
+ */
+@media print {
+  .dss-menu {
+    display: none !important;
+  }
+}
