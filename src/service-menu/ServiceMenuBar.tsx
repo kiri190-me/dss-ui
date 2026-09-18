@@ -48,6 +48,25 @@ import type { ServiceMenuEntry } from "./types";
 export const DEFAULT_SERVICE_ICON = "🔗";
 
 /**
+ * 아이콘이 **없는** 서비스를 좁은 화면에서 대신 가리키는 한 글자.
+ *
+ * 왜 필요한가: `variant="inline"` 은 폰(<768px)에서 이름을 눈에서 감추고
+ * 아이콘만 보인다. 그런데 아이콘은 선택값이라(types.ts — 없으면 키 자체가
+ * 없다) 그 칸들은 전부 기본 아이콘 🔗 하나가 된다 — **아이콘 없는 서비스가
+ * 둘이면 둘이 똑같아져** 어디로 가는 링크인지 눌러 봐야 안다. 이름의 첫
+ * 글자는 서로 다를 가능성이 훨씬 크고("개"선요청 · "견"적), 한글·영문 모두
+ * 한 칸에 들어간다.
+ *
+ * 🔴 빈 칸만은 남기지 않는다: 이름이 비어 있으면(정석대로면
+ * normalizeServiceMenu 가 이미 걸렀을 값이다) 기본 아이콘으로 떨어진다.
+ */
+export function serviceInitial(name: string): string {
+  // 코드 포인트로 자른다 — name[0] 은 이모지(서로게이트 쌍)를 반으로 쪼개
+  // 깨진 글자 하나를 남긴다.
+  return Array.from(name.trim())[0] ?? DEFAULT_SERVICE_ICON;
+}
+
+/**
  * 밝기를 무엇에 맞출지.
  *
  * - `"host"`(기본): 사이트를 따라간다. 조상에 `.dark` 나
@@ -59,6 +78,23 @@ export const DEFAULT_SERVICE_ICON = "🔗";
  *   방식일 때만 고르라 — 아니면 띠만 따로 놀게 된다.
  */
 export type ServiceMenuColorScheme = "host" | "light" | "dark" | "system";
+
+/**
+ * **어디에 앉는가.** 사이트가 고른다 — 이 묶음은 스스로 알아내려 하지 않는다
+ * (머리말의 구조는 사이트마다 다르고, 그것을 짐작하는 순간 틀리기 시작한다).
+ *
+ * - `"bar"`(기본): 머리말 **위**에 독립된 띠로 앉는다. 한 단 눌린 바탕에,
+ *   지금 있는 칸만 머리말과 같은 색으로 떠 있는 **브라우저 탭 은유**다.
+ *   계측기·개선요청이 이 모습으로 쓰고 있다.
+ * - `"inline"`: 머리말 **안**에 한 줄로 앉는다. 바탕도 아래 테두리도 없이
+ *   머리말 위에 그대로 얹히므로, 지금 있는 칸은 바탕이 아니라 **굵기·색·
+ *   2px 밑줄**로 알린다(흰 머리말 위에서는 「흰 칸으로 띄우는」 탭 은유가
+ *   보이지 않는다). A/S 가 이 모습을 고른 이유는 README 3절에 있다.
+ *
+ * 🔴 기본값이 `"bar"` 인 것은 되돌릴 수 없는 약속이다 — 이미 그 모습으로
+ *    커밋된 사이트가 둘 있다.
+ */
+export type ServiceMenuVariant = "bar" | "inline";
 
 export type ServiceMenuBarProps = {
   /**
@@ -79,6 +115,8 @@ export type ServiceMenuBarProps = {
   label?: string;
   /** 밝기를 무엇에 맞출지. 위 ServiceMenuColorScheme 참조. */
   colorScheme?: ServiceMenuColorScheme;
+  /** 머리말 위(기본) 인가, 머리말 안인가. 위 ServiceMenuVariant 참조. */
+  variant?: ServiceMenuVariant;
   /**
    * 사이트가 바깥 여백·위치를 보태고 싶을 때. 이 묶음의 클래스 뒤에
    * 붙으므로 사이트 것이 이긴다(같은 우선순위면 나중에 적힌 규칙이 이긴다).
@@ -91,6 +129,7 @@ export function ServiceMenuBar({
   currentServiceId = null,
   label = "사내 시스템 바로가기",
   colorScheme = "host",
+  variant = "bar",
   className,
 }: ServiceMenuBarProps) {
   // 그릴 수 없는 주소는 여기서도 한 번 더 뺀다. normalizeServiceMenu 를
@@ -108,9 +147,15 @@ export function ServiceMenuBar({
   // 넣으면 매 화면 위쪽을 잔소리가 차지한다. 그냥 없는 것이 맞다.
   if (drawable.length === 0) return null;
 
+  // 앉는 모습은 **클래스 하나**로 가른다. 기본값("bar")일 때는 클래스가 하나도
+  // 늘지 않으므로, 이미 그 모습으로 커밋된 사이트들의 마크업이 글자 하나
+  // 달라지지 않는다. 사이트가 준 className 은 늘 맨 뒤다(같은 우선순위면
+  // 나중에 적힌 것이 이긴다 — 사이트 것이 이겨야 한다).
+  const ownClasses = variant === "inline" ? "dss-menu dss-menu--inline" : "dss-menu";
+
   return (
     <nav
-      className={className ? `dss-menu ${className}` : "dss-menu"}
+      className={className ? `${ownClasses} ${className}` : ownClasses}
       aria-label={label}
       data-color-scheme={colorScheme}
     >
@@ -120,6 +165,11 @@ export function ServiceMenuBar({
           // 않는다 — 그래도 띠는 멀쩡히 그려진다. 사이트가 자기 id 를
           // 잘못 넘긴 날 화면이 죽어서는 안 된다.
           const isCurrent = currentServiceId !== null && currentServiceId !== undefined && service.id === currentServiceId;
+
+          // 포털이 이 칸에 아이콘을 실어 보냈는가. `?? DEFAULT_SERVICE_ICON`
+          // 과 **같은 기준**으로 본다(null 도 없는 것으로 친다) — 기준이
+          // 어긋나면 아이콘 자리에 아무것도 없는 칸이 생긴다.
+          const ownIcon = service.icon ?? null;
 
           return (
             // key 에 차례를 섞는다. id 가 겹친 목록(정석대로라면
@@ -138,10 +188,27 @@ export function ServiceMenuBar({
                 // 를 제 CSS 한 줄로 덮어쓸 수 있다.
                 data-current={isCurrent ? "true" : "false"}
                 data-service-id={service.id}
+                // 좁은 화면에서 이름을 감추는 모습(variant="inline")이 이
+                // 값으로 갈린다 — 아이콘이 없는 칸은 🔗 대신 이름 첫 글자를
+                // 보인다. 두 모습 모두 마크업은 같고, 무엇을 보일지는 CSS 가
+                // 고른다(이 조각은 화면 폭을 모른다 — 서버에서도 그려진다).
+                data-has-icon={ownIcon === null ? "false" : "true"}
               >
                 <span className="dss-menu__icon" aria-hidden="true">
-                  {service.icon ?? DEFAULT_SERVICE_ICON}
+                  {ownIcon ?? DEFAULT_SERVICE_ICON}
                 </span>
+                {ownIcon === null && (
+                  // 기본 모습에서는 CSS 가 감춘다(display: none) — 지금 그
+                  // 모습으로 커밋된 사이트들의 화면이 한 픽셀도 달라지지
+                  // 않는다. aria-hidden 인 이유는 아래 이름이 낭독기용으로
+                  // 늘 남아 있어서다(감추는 것은 **눈에서만**이다).
+                  <span className="dss-menu__initial" aria-hidden="true">
+                    {serviceInitial(service.name)}
+                  </span>
+                )}
+                {/* 🔴 이름은 폰에서도 마크업에 남는다 — CSS 가 눈에서만
+                    감춘다(clip). 이모지 하나만 읽히면 낭독기 사용자는 어디로
+                    가는 링크인지 알 수 없다. */}
                 <span className="dss-menu__name">{service.name}</span>
               </a>
             </li>

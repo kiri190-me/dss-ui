@@ -36,6 +36,11 @@
   --dss-menu-fg: #52525b;
   --dss-menu-fg-hover: #18181b;
   --dss-menu-bg-hover: #e4e4e7;
+  /* 머리말 **안**에 앉았을 때(variant="inline")의 손댐 바탕. 위의
+     --dss-menu-bg-hover 와 값이 같아 보여도 따로 두는 이유는 다크다: 띠의
+     손댐 색(#18181b)은 머리말 색과 같아서, 머리말 위에 그대로 얹힌 모습에서
+     쓰면 **손대도 아무 일이 없는 것처럼** 보인다. */
+  --dss-menu-inline-bg-hover: #e4e4e7;
   --dss-menu-current-bg: #ffffff;
   --dss-menu-current-fg: #18181b;
   --dss-menu-accent: #18181b;
@@ -180,6 +185,117 @@
   display: inline-block;
 }
 
+/*
+ * 아이콘이 없는 칸을 좁은 화면에서 대신 가리키는 이름 첫 글자.
+ * 평소에는 **없다** — 폰에서 이름을 감추는 모습(아래 variant="inline")에서만
+ * 아이콘 자리를 메운다. 기본 모습(머리말 위 띠)에서는 끝까지 보이지 않는다.
+ */
+.dss-menu__initial {
+  display: none;
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* ── 머리말 **안**에 앉는 모습(variant="inline") ───────────────────────────
+ *
+ * 왜 모습이 둘인가: 기본 모습은 「한 단 눌린 바탕 위에, 지금 칸만 머리말과
+ * 같은 색으로 떠 있는」 브라우저 탭 은유다. 그런데 회색 층이 화면 위쪽을 한
+ * 줄 더 잡아먹어 답답하다는 이유로 A/S 는 띠를 **머리말 안 한 줄**로 들였고,
+ * 흰 머리말 위에서는 「흰 칸으로 띄우는」 그 은유가 아예 보이지 않는다.
+ * 그래서 이 모습은 지금 있는 서비스를 **굵기 + 진한 글자색 + 2px 밑줄** 셋으로
+ * 알린다(색 하나에 기대지 않는다 — UI_GUIDELINE 7절, aria-current 는 그대로).
+ *
+ * 🔴 여기 규칙은 전부 `.dss-menu--inline` 안에만 걸린다. 기본 모습은 한 픽셀도
+ *    달라지지 않는다 — 이미 그 모습으로 커밋된 사이트가 둘이다(계측기·개선요청).
+ *
+ * 선택자를 `.dss-menu.dss-menu--inline` 으로 두 번 적은 이유: 바탕·테두리를 끄는
+ * 규칙이 위 `.dss-menu` 와 우선순위가 같으면 **적힌 차례**가 승부를 가른다.
+ * 한 칸 세게 두면 이 파일을 나중에 어떻게 재배치해도 안전하다.
+ */
+.dss-menu.dss-menu--inline {
+  /* 머리말 바탕 위에 그대로 얹힌다 — 제 바탕도, 아래 테두리도 없다(테두리는
+     머리말이 이미 갖고 있다). */
+  background-color: transparent;
+  border-bottom: 0;
+  /*
+   * 노치 인셋은 **맨 위 요소 하나만** 갖는다. 머리말 안으로 들어온 이상 맨 위
+   * 요소는 머리말이므로 여기서는 0 으로 못 박는다 — 사이트가 --dss-menu-inset-top
+   * 을 켜 둔 채 이 모습으로 옮겨 와도 노치 높이만큼 두 번 밀리지 않는다.
+   */
+  padding-top: 0;
+}
+
+/* 바깥 여백은 머리말이 준다(제목·알림종과의 사이). 띠일 때의 6px 은 회색 층
+   안쪽 여백이었다. */
+.dss-menu--inline .dss-menu__list {
+  padding: 0;
+}
+
+.dss-menu--inline .dss-menu__link {
+  /* 폰에서 이름을 눈에서만 감출 때(아래) 그 기준이 되는 자리다. */
+  position: relative;
+  /* 아래가 머리말에 붙는 탭이 아니므로 네 귀가 다 둥글다 — 손대면 알약
+     모양으로 밝아진다. */
+  border-radius: 6px;
+}
+
+.dss-menu--inline .dss-menu__link:hover {
+  background-color: var(--dss-menu-inline-bg-hover);
+}
+
+/* 지금 있는 서비스: 바탕을 끄고 굵기·색·밑줄만 남긴다. 밑줄(box-shadow 2px)과
+   굵기(600)·글자색은 위 기본 규칙에서 그대로 물려받는다. */
+.dss-menu--inline .dss-menu__link[data-current="true"] {
+  background-color: transparent;
+}
+
+/* 지금 칸도 손대면 밝아진다 — 위 transparent 가 기본 hover 규칙보다 세서,
+   여기서 되돌려 주지 않으면 지금 칸만 눌리지 않는 것처럼 보인다. */
+.dss-menu--inline .dss-menu__link[data-current="true"]:hover {
+  background-color: var(--dss-menu-inline-bg-hover);
+}
+
+/*
+ * 폰(<768px)에서는 **아이콘만** 보인다.
+ *
+ * 머리말 한 줄에 햄버거 · 제목 · 이 목록 · 알림종이 함께 들어가므로, 좁은
+ * 화면에서 칸마다 이름까지 싣고 있으면 자리를 다투게 된다. 이름을 지우면 칸
+ * 하나가 아이콘 하나 폭으로 줄어 그럴 여지가 사라진다.
+ *
+ * 🔴 이름은 **눈에서만** 감춘다(clip) — 마크업에 그대로 남아 화면 낭독기는
+ *    여전히 "계측기" 로 읽는다. display:none 으로 지우면 링크 이름이 이모지
+ *    하나가 되어 어디로 가는지 알 수 없다.
+ * 🔴 아이콘은 선택값이다(types.ts). 없는 칸은 🔗 하나로 전부 같아 보이므로,
+ *    그 칸만 이름 첫 글자를 대신 보인다(ServiceMenuBar 의 serviceInitial).
+ * 🔴 「지금 여기」는 이름이 사라져도 **2px 밑줄**로 남는다 — 굵기와 글자색은
+ *    이모지에 먹히지 않지만 밑줄은 글자 모양과 무관한 표시다.
+ *
+ * 768px 은 사이트들이 쓰는 Tailwind 의 `md` 와 같은 값이다(A/S 머리말도 그
+ * 폭에서 햄버거를 감춘다). `not all and (min-width:)` 로 적은 것은 `md:` 의
+ * 정확한 여집합이라 0.5px 틈이 생기지 않기 때문이다.
+ */
+@media not all and (min-width: 768px) {
+  .dss-menu--inline .dss-menu__name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .dss-menu--inline .dss-menu__link[data-has-icon="false"] .dss-menu__icon {
+    display: none;
+  }
+
+  .dss-menu--inline .dss-menu__link[data-has-icon="false"] .dss-menu__initial {
+    display: inline-block;
+  }
+}
+
 /* ── 다크 ────────────────────────────────────────────────────────────────
  *
  * 세 가지 신호를 받는다. 앞의 둘은 **사이트가 이미 쓰고 있는 표시**라
@@ -197,6 +313,8 @@
   --dss-menu-fg: #a1a1aa;
   --dss-menu-fg-hover: #fafafa;
   --dss-menu-bg-hover: #18181b;
+  /* 머리말 색(#18181b)과 같으면 손댄 티가 안 난다 — 한 단 밝게. */
+  --dss-menu-inline-bg-hover: #27272a;
   --dss-menu-current-bg: #18181b;
   --dss-menu-current-fg: #fafafa;
   --dss-menu-accent: #fafafa;
@@ -215,6 +333,7 @@
     --dss-menu-fg: #a1a1aa;
     --dss-menu-fg-hover: #fafafa;
     --dss-menu-bg-hover: #18181b;
+    --dss-menu-inline-bg-hover: #27272a;
     --dss-menu-current-bg: #18181b;
     --dss-menu-current-fg: #fafafa;
     --dss-menu-accent: #fafafa;
@@ -233,6 +352,7 @@
   --dss-menu-fg: #52525b;
   --dss-menu-fg-hover: #18181b;
   --dss-menu-bg-hover: #e4e4e7;
+  --dss-menu-inline-bg-hover: #e4e4e7;
   --dss-menu-current-bg: #ffffff;
   --dss-menu-current-fg: #18181b;
   --dss-menu-accent: #18181b;

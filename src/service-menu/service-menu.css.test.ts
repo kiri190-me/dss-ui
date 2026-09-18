@@ -164,3 +164,102 @@ test("색만으로 「지금 여기」를 알리지 않는다", () => {
 test("키보드 초점 테두리가 있다", () => {
   assert.match(CSS, /\.dss-menu__link:focus-visible\s*\{[^}]*outline:/);
 });
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * 머리말 **안**에 앉는 모습(variant="inline")
+ *
+ * 이 모습의 값은 거의 전부 CSS 에 있다(마크업은 클래스 하나만 더 붙인다).
+ * 그래서 여기서 못 박는다: 바탕·테두리를 갖지 않을 것, 기본 모습을 건드리지
+ * 않을 것, 폰에서 이름을 **눈에서만** 감출 것, 아이콘 없는 칸이 빈 칸이 되지
+ * 않을 것.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/** 폰(<768px) 규칙 덩어리. 이 파일에서 `not all and` 로 여는 유일한 곳이다. */
+const NARROW = (() => {
+  const at = CSS.indexOf("@media not all and (min-width: 768px)");
+  assert.ok(at > 0, "폰에서 아이콘만 보이게 하는 @media 를 못 찾았다");
+  return CSS.slice(at, CSS.indexOf("\n}", CSS.indexOf("\n  }", at)));
+})();
+
+test("🔴 새 모습은 제 바탕도 아래 테두리도 갖지 않는다 — 머리말 위에 그대로 얹힌다", () => {
+  const inline = blockAfter(/\.dss-menu\.dss-menu--inline\s*\{([^}]*)\}/);
+
+  assert.match(inline, /background-color:\s*transparent/);
+  assert.match(inline, /border-bottom:\s*0/);
+  // 맨 위 요소는 이제 머리말이다 — 인셋을 띠가 또 가지면 두 번 밀린다.
+  assert.match(inline, /padding-top:\s*0/);
+});
+
+test("🔴 새 모습의 규칙은 전부 --inline 안에만 걸린다 — 기본 모습은 한 픽셀도 안 변한다", () => {
+  // 선택자만 모아 본다(주석은 위에서 이미 걷어냈다).
+  const selectors = [...CSS.matchAll(/(^|[{}])\s*([^{}@]+)\{/g)].map((m) => m[2].trim());
+  const inlineOnly = ["dss-menu--inline", "data-has-icon", "dss-menu__initial"];
+
+  for (const selector of selectors) {
+    if (!inlineOnly.some((mark) => selector.includes(mark))) continue;
+    // 기본값 한 줄(`.dss-menu__initial { display: none }`)만 예외다 — 그 줄이
+    // 있어야 기본 모습에서 첫 글자가 **끝까지 보이지 않는다**.
+    if (selector === ".dss-menu__initial") continue;
+    assert.ok(
+      selector.includes("dss-menu--inline"),
+      `"${selector}" 가 새 모습 밖에서도 걸린다 — 기본 모습이 달라진다`
+    );
+  }
+});
+
+test("🔴 이름 첫 글자는 기본 모습에서 끝까지 보이지 않는다", () => {
+  assert.match(blockAfter(/\.dss-menu__initial\s*\{([^}]*)\}/), /display:\s*none/);
+  // 켜 주는 곳은 폰 + 새 모습 + 아이콘 없는 칸, 세 조건이 겹칠 때뿐이다.
+  assert.match(
+    NARROW,
+    /\.dss-menu--inline \.dss-menu__link\[data-has-icon="false"\] \.dss-menu__initial \{\s*display: inline-block;/
+  );
+});
+
+test("🔴 폰에서 이름은 **눈에서만** 감춰진다 — 낭독기는 그대로 읽는다", () => {
+  const name = /\.dss-menu--inline \.dss-menu__name \{([^}]*)\}/.exec(NARROW);
+  assert.ok(name, "폰 규칙에 이름을 감추는 줄이 없다");
+
+  assert.match(name[1], /position:\s*absolute/);
+  assert.match(name[1], /clip-path:\s*inset\(50%\)/);
+  assert.equal(
+    /display:\s*none/.test(name[1]),
+    false,
+    "display:none 으로 지우면 링크 이름이 이모지 하나가 된다"
+  );
+  // 감춘 이름이 기대는 기준점. 없으면 페이지 어딘가로 튀어 나간다.
+  assert.match(
+    blockAfter(/\.dss-menu--inline \.dss-menu__link\s*\{([^}]*)\}/),
+    /position:\s*relative/
+  );
+});
+
+test("🔴 폰에서 아이콘 없는 칸이 빈 칸이 되지 않는다 — 🔗 를 끄면 첫 글자를 켠다", () => {
+  const hideIcon = /\[data-has-icon="false"\] \.dss-menu__icon \{\s*display: none;/.test(NARROW);
+  const showInitial = /\[data-has-icon="false"\] \.dss-menu__initial \{\s*display: inline-block;/.test(NARROW);
+
+  assert.equal(hideIcon, showInitial, "둘 중 하나만 있으면 빈 칸이거나 두 글자가 겹친다");
+  assert.ok(hideIcon, "아이콘 없는 칸을 폰에서 다루는 규칙이 사라졌다");
+});
+
+test("🔴 새 모습에서도 「지금 여기」는 밑줄로 남는다 — 아이콘만 보일 때 유일한 표시다", () => {
+  const current = blockAfter(
+    /\.dss-menu--inline \.dss-menu__link\[data-current="true"\]\s*\{([^}]*)\}/
+  );
+
+  // 바탕만 끈다. 굵기·글자색·밑줄(box-shadow)은 기본 규칙에서 물려받는다 —
+  // 여기서 box-shadow 를 끄면 폰에서 지금 칸을 알아볼 방법이 사라진다.
+  assert.match(current, /background-color:\s*transparent/);
+  assert.equal(/box-shadow/.test(current), false, "밑줄을 껐다");
+  assert.equal(/font-weight/.test(current), false, "굵기를 덮어썼다");
+});
+
+test("새 모습에서는 손댄 티가 다크에서도 난다 — 머리말과 같은 색을 쓰지 않는다", () => {
+  const hover = blockAfter(/\.dss-menu--inline \.dss-menu__link:hover\s*\{([^}]*)\}/);
+  assert.match(hover, /var\(--dss-menu-inline-bg-hover\)/);
+
+  const darkValue = /--dss-menu-inline-bg-hover:\s*([^;]+);/.exec(DARK)?.[1].trim();
+  const darkHeader = /--dss-menu-current-bg:\s*([^;]+);/.exec(DARK)?.[1].trim();
+  assert.ok(darkValue && darkHeader);
+  assert.notEqual(darkValue, darkHeader, "다크에서 손댐 색이 머리말 색과 같다 — 아무 일도 없어 보인다");
+});

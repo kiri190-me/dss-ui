@@ -16,6 +16,7 @@ export { ServiceMenuBar, DEFAULT_SERVICE_ICON } from "./service-menu/ServiceMenu
 export type {
   ServiceMenuBarProps,
   ServiceMenuColorScheme,
+  ServiceMenuVariant,
 } from "./service-menu/ServiceMenuBar";
 export {
   normalizeServiceMenu,
