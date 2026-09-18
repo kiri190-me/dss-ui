@@ -317,6 +317,38 @@ test("🔴 자바스크립트 없이 펼쳐진다 — <details>/<summary> 라 �
   assert.equal(/<details[^>]*\sopen/.test(html), false, "펼쳐진 채로 그려진다");
 });
 
+test("🔴 바깥을 눌러 접는 조각을 곁들여도 마크업은 한 글자도 늘지 않는다", () => {
+  // DropdownDismiss 는 null 을 돌려준다(그리는 것이 없다). 그래서
+  //  - 스크립트가 없어도 위 시험들이 보는 <details>/<summary>/<a> 가 그대로고,
+  //  - 서버에서 그린 것과 브라우저에서 그린 것이 같아 hydration 이 안 어긋나고,
+  //  - 세 사이트의 머리말 마크업 시험이 깨지지 않는다.
+  const html = renderToStaticMarkup(
+    <ServiceMenuBar services={SERVICES} currentServiceId="dss-as" variant="inline" />
+  );
+
+  // 드롭다운 안에 든 것은 단추와 목록 **둘뿐**이다 — 그 사이에도, 뒤에도
+  // 아무것도 없다.
+  assert.match(html, /<details class="dss-menu__dropdown"><summary /);
+  assert.match(html, /<\/ul><\/details><\/nav>$/);
+  assert.equal(
+    [...html.matchAll(/<details|<summary|<ul |<\/details>/g)].length,
+    4,
+    "드롭다운을 감싸는 마디가 늘었다"
+  );
+});
+
+test("🔴 기본 모습(variant=\"bar\")에는 아무것도 곁들이지 않는다", () => {
+  // 바깥을 눌러 접을 것 자체가 없다(드롭다운이 아니다). 이 모습의 마크업은
+  // 이미 그대로 커밋된 사이트가 있어 한 글자도 달라지면 안 된다.
+  const html = renderToStaticMarkup(
+    <ServiceMenuBar services={SERVICES} currentServiceId="dss-as" />
+  );
+
+  assert.match(html, /^<nav [^>]*><ul class="dss-menu__list">/);
+  assert.match(html, /<\/ul><\/nav>$/);
+  assert.equal(html.includes("<details"), false);
+});
+
 test("🔴 펼친 목록의 칸은 여전히 평범한 <a href> 다 — 눌러서 간다", () => {
   const html = renderToStaticMarkup(
     <ServiceMenuBar services={SERVICES} currentServiceId="dss-as" variant="inline" />

@@ -1,3 +1,4 @@
+import { DropdownDismiss } from "./DropdownDismiss";
 import { isSafeServiceUrl } from "./normalize";
 import type { ServiceMenuEntry } from "./types";
 
@@ -21,6 +22,11 @@ import type { ServiceMenuEntry } from "./types";
  * 껍데기 안에서 클라이언트 조각으로 그려질 수도 있다(A/S 의 AppShell).
  * 붙이는 순간 뒤쪽 한 가지만 가능해지므로 붙이지 않는다.
  *
+ * 🔴 드롭다운에 곁들이는 DropdownDismiss 만이 "use client" 다. 그 조각은
+ *    **아무것도 그리지 않고**(null), 바깥을 눌렀을 때·Esc 를 눌렀을 때 접는
+ *    일만 얹는다 — 서버 컴포넌트가 클라이언트 조각을 그리는 것은 막히지
+ *    않으므로 이 파일은 그대로 서버 컴포넌트로 남는다.
+ *
  * ── 🔴 펼치고 접는 것도 자바스크립트 없이 한다 ───────────────────────────
  * 머리말 안에 앉는 모습(variant="inline")은 드롭다운이지만 상태를 들지
  * 않는다. <details> + <summary> 라 **브라우저가 스스로** 펼치고 접고,
@@ -28,6 +34,9 @@ import type { ServiceMenuEntry } from "./types";
  * `<select onChange>` 로 만들면 스크립트가 붙기 전에는 아무 데도 갈 수
  * 없는데, 사내망에서는 스크립트가 늦게 붙는 일이 실제로 있다(개선요청
  * 머리말이 로그아웃 <form> 을 그대로 두는 것과 같은 이유다).
+ *
+ * 그 위에 **바깥을 눌러 접기 · Esc 로 접기**만 얹었다(DropdownDismiss).
+ * 얹은 것이라 스크립트가 없으면 그 둘만 없고, 펼침·접힘·링크는 그대로다.
  *
  * ── next/link 를 쓰지 않는다 ─────────────────────────────────────────────
  * 여기 링크는 **다른 앱(다른 포트/다른 호스트)** 으로 가는 주소다. next/link
@@ -291,6 +300,10 @@ export function ServiceMenuBar({
             <span className="dss-menu__label">{buttonName}</span>
           </summary>
           {list}
+          {/* 🔴 아무것도 그리지 않는다(null). 바깥을 눌렀을 때·Esc 를 눌렀을
+              때 이 <details> 를 접는 일만 얹는다 — 마크업은 한 글자도 늘지
+              않고, 스크립트가 없으면 그 둘만 없다(DropdownDismiss 참조). */}
+          <DropdownDismiss />
         </details>
       ) : (
         list
