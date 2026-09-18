@@ -166,12 +166,13 @@ test("키보드 초점 테두리가 있다", () => {
 });
 
 /* ──────────────────────────────────────────────────────────────────────────
- * 머리말 **안**에 앉는 모습(variant="inline")
+ * 머리말 **안**에 앉는 모습(variant="inline") — 드롭다운
  *
- * 이 모습의 값은 거의 전부 CSS 에 있다(마크업은 클래스 하나만 더 붙인다).
- * 그래서 여기서 못 박는다: 바탕·테두리를 갖지 않을 것, 기본 모습을 건드리지
- * 않을 것, 폰에서 이름을 **눈에서만** 감출 것, 아이콘 없는 칸이 빈 칸이 되지
- * 않을 것.
+ * 이 모습의 값은 거의 전부 CSS 에 있다(마크업은 단추와 목록을 내놓을 뿐,
+ * 어디에 어떻게 뜨는지는 전부 여기다). 그래서 여기서 못 박는다: 바탕·테두리를
+ * 갖지 않을 것, 기본 모습을 건드리지 않을 것, 펼친 목록이 **떠서** 그려질 것,
+ * 폰에서 **단추의** 이름만 눈에서 감출 것(펼친 목록의 이름은 그대로 보인다),
+ * 아이콘 없는 서비스에서 단추가 빈 칸이 되지 않을 것.
  * ────────────────────────────────────────────────────────────────────────── */
 
 /** 폰(<768px) 규칙 덩어리. 이 파일에서 `not all and` 로 여는 유일한 곳이다. */
@@ -207,48 +208,70 @@ test("🔴 새 모습의 규칙은 전부 --inline 안에만 걸린다 — 기�
   }
 });
 
-test("🔴 이름 첫 글자는 기본 모습에서 끝까지 보이지 않는다", () => {
+test("🔴 이름 첫 글자는 단추에서만 켜진다 — 기본 모습에서도 펼친 목록에서도 안 보인다", () => {
   assert.match(blockAfter(/\.dss-menu__initial\s*\{([^}]*)\}/), /display:\s*none/);
-  // 켜 주는 곳은 폰 + 새 모습 + 아이콘 없는 칸, 세 조건이 겹칠 때뿐이다.
+  // 켜 주는 곳은 폰 + 새 모습 + **단추** + 아이콘 없는 서비스, 네 조건이
+  // 겹칠 때뿐이다. 펼친 목록에서는 이름이 늘 보이므로 첫 글자가 필요 없다.
   assert.match(
     NARROW,
-    /\.dss-menu--inline \.dss-menu__link\[data-has-icon="false"\] \.dss-menu__initial \{\s*display: inline-block;/
+    /\.dss-menu--inline \.dss-menu__summary\[data-has-icon="false"\] \.dss-menu__initial \{\s*display: inline-block;/
+  );
+  assert.equal(
+    /\.dss-menu__link\[data-has-icon="false"\] \.dss-menu__initial/.test(CSS),
+    false,
+    "목록 칸에서 첫 글자를 켜는 규칙이 남아 있다 — 폰에서 「개 개선요청」이 된다"
   );
 });
 
-test("🔴 폰에서 이름은 **눈에서만** 감춰진다 — 낭독기는 그대로 읽는다", () => {
-  const name = /\.dss-menu--inline \.dss-menu__name \{([^}]*)\}/.exec(NARROW);
-  assert.ok(name, "폰 규칙에 이름을 감추는 줄이 없다");
+test("🔴 폰에서 단추의 이름은 **눈에서만** 감춰진다 — 낭독기는 그대로 읽는다", () => {
+  const label = /\.dss-menu--inline \.dss-menu__label \{([^}]*)\}/.exec(NARROW);
+  assert.ok(label, "폰 규칙에 단추 이름을 감추는 줄이 없다");
 
-  assert.match(name[1], /position:\s*absolute/);
-  assert.match(name[1], /clip-path:\s*inset\(50%\)/);
+  assert.match(label[1], /position:\s*absolute/);
+  assert.match(label[1], /clip-path:\s*inset\(50%\)/);
   assert.equal(
-    /display:\s*none/.test(name[1]),
+    /display:\s*none/.test(label[1]),
     false,
-    "display:none 으로 지우면 링크 이름이 이모지 하나가 된다"
+    "display:none 으로 지우면 단추 이름이 이모지 하나가 된다"
   );
   // 감춘 이름이 기대는 기준점. 없으면 페이지 어딘가로 튀어 나간다.
   assert.match(
-    blockAfter(/\.dss-menu--inline \.dss-menu__link\s*\{([^}]*)\}/),
+    blockAfter(/\.dss-menu--inline \.dss-menu__dropdown\s*\{([^}]*)\}/),
     /position:\s*relative/
   );
 });
 
-test("🔴 폰에서 아이콘 없는 칸이 빈 칸이 되지 않는다 — 🔗 를 끄면 첫 글자를 켠다", () => {
+test("🔴 펼친 목록의 이름은 폰에서도 보인다 — 감추는 것은 단추뿐이다", () => {
+  // 이름 없이 이모지만 늘어선 목록은 고를 수가 없다. 목록은 머리말 폭을
+  // 다투지 않고 떠서 그려지므로 감출 이유도 없다.
+  assert.equal(
+    /\.dss-menu__name \{[^}]*clip-path/.test(NARROW),
+    false,
+    "폰 규칙이 목록 칸의 이름까지 감춘다"
+  );
+  assert.equal(
+    NARROW.includes("dss-menu__name"),
+    false,
+    "폰 규칙이 목록 칸의 이름을 건드린다"
+  );
+});
+
+test("🔴 폰에서 아이콘 없는 서비스의 단추가 빈 칸이 되지 않는다 — 🔗 를 끄면 첫 글자를 켠다", () => {
   const hideIcon = /\[data-has-icon="false"\] \.dss-menu__icon \{\s*display: none;/.test(NARROW);
   const showInitial = /\[data-has-icon="false"\] \.dss-menu__initial \{\s*display: inline-block;/.test(NARROW);
 
-  assert.equal(hideIcon, showInitial, "둘 중 하나만 있으면 빈 칸이거나 두 글자가 겹친다");
-  assert.ok(hideIcon, "아이콘 없는 칸을 폰에서 다루는 규칙이 사라졌다");
+  assert.equal(hideIcon, showInitial, "둘 중 하나만 있으면 빈 단추이거나 두 글자가 겹친다");
+  assert.ok(hideIcon, "아이콘 없는 서비스를 폰에서 다루는 규칙이 사라졌다");
 });
 
-test("🔴 새 모습에서도 「지금 여기」는 밑줄로 남는다 — 아이콘만 보일 때 유일한 표시다", () => {
+test("🔴 펼친 목록에서도 「지금 여기」는 굵기·색·밑줄로 남는다 — 색 하나에 기대지 않는다", () => {
   const current = blockAfter(
     /\.dss-menu--inline \.dss-menu__link\[data-current="true"\]\s*\{([^}]*)\}/
   );
 
-  // 바탕만 끈다. 굵기·글자색·밑줄(box-shadow)은 기본 규칙에서 물려받는다 —
-  // 여기서 box-shadow 를 끄면 폰에서 지금 칸을 알아볼 방법이 사라진다.
+  // 바탕만 끈다(목록이 이미 제 바탕 위에 떠 있다). 굵기·글자색·밑줄(box-shadow)은
+  // 기본 규칙에서 물려받는다 — 여기서 그것들을 덮으면 흑백 인쇄에서도, 색을
+  // 구분하지 못하는 사람에게도 지금 칸이 사라진다(UI_GUIDELINE 7절).
   assert.match(current, /background-color:\s*transparent/);
   assert.equal(/box-shadow/.test(current), false, "밑줄을 껐다");
   assert.equal(/font-weight/.test(current), false, "굵기를 덮어썼다");
@@ -262,4 +285,81 @@ test("새 모습에서는 손댄 티가 다크에서도 난다 — 머리말과 
   const darkHeader = /--dss-menu-current-bg:\s*([^;]+);/.exec(DARK)?.[1].trim();
   assert.ok(darkValue && darkHeader);
   assert.notEqual(darkValue, darkHeader, "다크에서 손댐 색이 머리말 색과 같다 — 아무 일도 없어 보인다");
+});
+
+/* ── 펼친 목록(드롭다운 패널) ─────────────────────────────────────────────── */
+
+/** 머리말 안에 앉았을 때의 목록 규칙. 기본 모습의 것과 다른 블록이다. */
+const PANEL = blockAfter(/\.dss-menu--inline \.dss-menu__list\s*\{([^}]*)\}/);
+
+test("🔴 펼친 목록은 떠서 그려진다 — 열 때마다 머리말이 두꺼워지지 않는다", () => {
+  // 제자리에 그리면 목록 높이만큼 머리말이 커져 본문이 아래로 밀린다.
+  // 기준점은 단추와 목록을 함께 싸는 상자다(위 dropdown 시험).
+  assert.match(PANEL, /position:\s*absolute/);
+  assert.match(PANEL, /top:\s*calc\(100% \+ \d+px\)/);
+  assert.match(PANEL, /z-index:/, "본문 위에 떠야 한다 — 쌓임 순서가 없으면 글자에 묻힌다");
+});
+
+test("🔴 펼친 목록은 제 바탕과 테두리를 갖는다 — 아래 글자가 비치면 못 읽는다", () => {
+  assert.match(PANEL, /background-color:\s*var\(--dss-menu-panel-bg\)/);
+  assert.match(PANEL, /border:\s*1px solid var\(--dss-menu-border\)/);
+  assert.match(PANEL, /box-shadow:.*var\(--dss-menu-panel-shadow\)/);
+});
+
+test("펼친 목록은 세로로 굴러간다 — 가로 굴리기는 여기서 뜻을 잃었다", () => {
+  assert.match(PANEL, /flex-direction:\s*column/);
+  assert.match(PANEL, /max-height:/, "목록이 길면 화면 밖으로 흘러내린다");
+  assert.match(PANEL, /overflow-y:\s*auto/);
+  assert.match(PANEL, /overflow-x:\s*hidden/);
+  assert.match(PANEL, /overscroll-behavior:\s*contain/, "끝까지 민 스크롤이 페이지로 샌다");
+  // 폰(360px)에서도 화면 밖으로 나가지 않는다.
+  assert.match(PANEL, /max-width:\s*min\(/);
+});
+
+test("🔴 단추도 키보드로 다다를 수 있다 — 초점 테두리가 있다", () => {
+  assert.match(
+    CSS,
+    /\.dss-menu--inline \.dss-menu__summary:focus-visible\s*\{[^}]*outline:/
+  );
+  // 손댄 티도 난다 — 마우스 사용자에게 「눌리는 것」임을 알린다.
+  assert.match(
+    blockAfter(/\.dss-menu--inline \.dss-menu__summary:hover\s*\{([^}]*)\}/),
+    /background-color:\s*var\(--dss-menu-inline-bg-hover\)/
+  );
+});
+
+test("브라우저가 그리는 삼각형을 끄고 제 것을 그린다 — 아이콘과 자리를 다투지 않게", () => {
+  const summary = blockAfter(/\.dss-menu--inline \.dss-menu__summary\s*\{([^}]*)\}/);
+  assert.match(summary, /list-style:\s*none/, "파이어폭스에서 왼쪽에 삼각형이 남는다");
+  assert.match(
+    CSS,
+    /\.dss-menu--inline \.dss-menu__summary::-webkit-details-marker\s*\{\s*display:\s*none/,
+    "웹킷에서 왼쪽에 삼각형이 남는다"
+  );
+
+  // 제 삼각형은 글자가 아니라 테두리로 그린다 — "▾" 같은 글자는 기기에 따라
+  // 이모지로 바뀌어 색도 크기도 제멋대로가 된다.
+  const caret = blockAfter(/\.dss-menu--inline \.dss-menu__summary::after\s*\{([^}]*)\}/);
+  assert.match(caret, /content:\s*""/);
+  assert.match(caret, /border-top:\s*\d+px solid currentColor/);
+  // 펼쳐지면 위를 가리킨다.
+  assert.match(
+    CSS,
+    /\.dss-menu--inline \.dss-menu__dropdown\[open\] \.dss-menu__summary::after\s*\{[^}]*transform:\s*rotate\(180deg\)/
+  );
+});
+
+test("🔴 단추는 목록 칸과 키가 같다 — 머리말 한 줄에서 혼자 튀지 않는다", () => {
+  const summary = blockAfter(/\.dss-menu--inline \.dss-menu__summary\s*\{([^}]*)\}/);
+  const link = blockAfter(/\.dss-menu__link\s*\{([^}]*)\}/);
+
+  for (const 값 of [/min-height:\s*34px/, /font-size:\s*13px/, /line-height:\s*1\.2/]) {
+    assert.match(summary, 값, "단추와 목록 칸의 값이 어긋났다");
+    assert.match(link, 값);
+  }
+  // 손가락 화면에서도 함께 커진다(권고 44px).
+  assert.match(
+    CSS,
+    /@media \(pointer: coarse\) \{\s*\.dss-menu--inline \.dss-menu__summary \{\s*min-height:\s*40px/
+  );
 });

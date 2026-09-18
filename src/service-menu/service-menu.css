@@ -44,6 +44,12 @@
   --dss-menu-current-bg: #ffffff;
   --dss-menu-current-fg: #18181b;
   --dss-menu-accent: #18181b;
+  /* 머리말 **안**에 앉았을 때 단추 아래로 펼쳐지는 목록의 바탕과 그림자.
+     목록은 본문 위에 **떠서** 그려지므로 제 바탕이 있어야 한다 — 없으면
+     아래 글자가 비쳐 읽을 수 없다. 머리말과 같은 색이 아니라 한 단 띄운
+     색인 이유: 떠 있다는 것이 색으로도 읽혀야 한다. */
+  --dss-menu-panel-bg: #ffffff;
+  --dss-menu-panel-shadow: rgba(9, 9, 11, 0.14);
   --dss-menu-color-scheme: light;
 
   /*
@@ -186,9 +192,10 @@
 }
 
 /*
- * 아이콘이 없는 칸을 좁은 화면에서 대신 가리키는 이름 첫 글자.
- * 평소에는 **없다** — 폰에서 이름을 감추는 모습(아래 variant="inline")에서만
- * 아이콘 자리를 메운다. 기본 모습(머리말 위 띠)에서는 끝까지 보이지 않는다.
+ * 아이콘이 없는 서비스를 좁은 화면에서 대신 가리키는 이름 첫 글자.
+ * 평소에는 **없다** — 폰에서 드롭다운 **단추**가 아이콘 하나로 줄어들 때만
+ * (아래 variant="inline") 아이콘 자리를 메운다. 기본 모습(머리말 위 띠)과
+ * 펼친 목록 안에서는 끝까지 보이지 않는다(그쪽은 이름이 늘 보인다).
  */
 .dss-menu__initial {
   display: none;
@@ -196,17 +203,23 @@
   line-height: 1;
 }
 
-/* ── 머리말 **안**에 앉는 모습(variant="inline") ───────────────────────────
+/* ── 머리말 **안**에 앉는 모습(variant="inline") — 드롭다운 ────────────────
  *
  * 왜 모습이 둘인가: 기본 모습은 「한 단 눌린 바탕 위에, 지금 칸만 머리말과
  * 같은 색으로 떠 있는」 브라우저 탭 은유다. 그런데 회색 층이 화면 위쪽을 한
- * 줄 더 잡아먹어 답답하다는 이유로 A/S 는 띠를 **머리말 안 한 줄**로 들였고,
- * 흰 머리말 위에서는 「흰 칸으로 띄우는」 그 은유가 아예 보이지 않는다.
- * 그래서 이 모습은 지금 있는 서비스를 **굵기 + 진한 글자색 + 2px 밑줄** 셋으로
- * 알린다(색 하나에 기대지 않는다 — UI_GUIDELINE 7절, aria-current 는 그대로).
+ * 줄 더 잡아먹어 답답하다는 이유로 띠를 **머리말 안**으로 들였다.
+ *
+ * 처음에는 그 안에서도 칸을 가로로 늘어놓았는데, 그러면 머리말 한 줄을 햄버거·
+ * 제목·서비스 목록·알림종이 함께 나눠 써야 해서 폰에서 자리가 모자랐다. 이름을
+ * 감추고 아이콘만 보여도, 가로로 굴려도 모자랐고 — **서비스가 늘수록 나빠지는**
+ * 구조였다. 그래서 2026-09-18 사용자 결정으로 **단추 하나 + 펼치는 목록**이
+ * 되었다. 이제 서비스가 셋이든 열이든 머리말이 잡아먹는 폭은 단추 하나다.
+ *
+ * 🔴 펼치고 접는 것은 <details>/<summary> 라 **브라우저가 한다** — 자바스크립트
+ *    없이도 열리고, 안의 링크는 평범한 <a> 라 그대로 나가진다.
  *
  * 🔴 여기 규칙은 전부 `.dss-menu--inline` 안에만 걸린다. 기본 모습은 한 픽셀도
- *    달라지지 않는다 — 이미 그 모습으로 커밋된 사이트가 둘이다(계측기·개선요청).
+ *    달라지지 않는다 — 이미 그 모습으로 커밋된 사이트가 있다.
  *
  * 선택자를 `.dss-menu.dss-menu--inline` 으로 두 번 적은 이유: 바탕·테두리를 끄는
  * 규칙이 위 `.dss-menu` 와 우선순위가 같으면 **적힌 차례**가 승부를 가른다.
@@ -225,26 +238,159 @@
   padding-top: 0;
 }
 
-/* 바깥 여백은 머리말이 준다(제목·알림종과의 사이). 띠일 때의 6px 은 회색 층
-   안쪽 여백이었다. */
+/*
+ * 단추와 목록을 함께 싸는 상자.
+ *
+ * position: relative 인 이유가 둘이다: (1) 펼친 목록이 여기에 매달려 단추 바로
+ * 아래로 떨어진다, (2) 폰에서 눈에서만 감춘 단추의 이름(clip)이 기댈 자리가
+ * 된다. 없으면 그 1px 짜리 이름이 페이지 어딘가로 튀어 나간다.
+ */
+.dss-menu--inline .dss-menu__dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+/*
+ * 펼치는 단추. 생김새는 목록 칸(.dss-menu__link)과 같은 값으로 맞춘다 —
+ * 같은 줄에 있는 다른 머리말 단추들과 키가 어긋나지 않게 하려는 것이다.
+ *
+ * list-style: none 은 브라우저가 <summary> 앞에 그리는 삼각형을 끈다(웹킷은
+ * 아래 ::-webkit-details-marker 로 따로 꺼야 한다). 왼쪽에 붙는 그 삼각형은
+ * 아이콘과 자리를 다투므로, 우리가 오른쪽에 제 것을 그린다(::after).
+ */
+.dss-menu--inline .dss-menu__summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 6px;
+  color: var(--dss-menu-fg);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  list-style: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.dss-menu--inline .dss-menu__summary::-webkit-details-marker {
+  display: none;
+}
+
+/* 손가락 화면에서는 목록 칸과 같은 값으로 함께 커진다(권고 44px). */
+@media (pointer: coarse) {
+  .dss-menu--inline .dss-menu__summary {
+    min-height: 40px;
+    padding: 0 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dss-menu--inline .dss-menu__summary {
+    transition: none;
+  }
+}
+
+.dss-menu--inline .dss-menu__summary:hover {
+  background-color: var(--dss-menu-inline-bg-hover);
+  color: var(--dss-menu-fg-hover);
+}
+
+.dss-menu--inline .dss-menu__summary:focus-visible {
+  outline: 2px solid var(--dss-menu-accent);
+  outline-offset: -2px;
+}
+
+/*
+ * 펼침 삼각형. 글자가 아니라 테두리로 그린다 — "▾" 같은 글자는 기기에 따라
+ * 이모지로 바뀌어 색도 크기도 제멋대로가 된다. currentColor 라 손댔을 때
+ * 글자와 함께 진해진다.
+ */
+.dss-menu--inline .dss-menu__summary::after {
+  content: "";
+  width: 0;
+  height: 0;
+  margin-left: 2px;
+  border-top: 4px solid currentColor;
+  border-right: 4px solid transparent;
+  border-left: 4px solid transparent;
+}
+
+/* 펼쳐져 있으면 위를 가리킨다 — 지금 열려 있다는 것을 모양으로도 알린다. */
+.dss-menu--inline .dss-menu__dropdown[open] .dss-menu__summary::after {
+  transform: rotate(180deg);
+}
+
+/* 단추에 선 이름. 폰에서는 아래 @media 가 눈에서만 감춘다. */
+.dss-menu--inline .dss-menu__label {
+  /* 이모지와 한글의 기준선이 어긋나 보이는 것을 막는다. */
+  display: inline-block;
+}
+
+/*
+ * 펼친 목록.
+ *
+ * 🔴 **떠서** 그려진다(position: absolute). 제자리에 그리면 목록이 열릴 때마다
+ *    머리말이 목록 높이만큼 두꺼워져 본문이 아래로 밀린다.
+ *
+ * 세로로 쌓이므로 기본 모습의 **가로** 굴리기는 여기서 뜻을 잃는다 — 대신
+ * 목록이 길면 제 안에서 **세로로** 굴러간다(max-height). overscroll-behavior 는
+ * 끝까지 민 스크롤이 페이지로 새는 것을 막는다(폰에서 화면이 통째로 튀는 그것).
+ */
 .dss-menu--inline .dss-menu__list {
-  padding: 0;
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 4px);
+  left: 0;
+  flex-direction: column;
+  align-items: stretch;
+  width: max-content;
+  min-width: 180px;
+  /* 폰(360px)에서도 화면 밖으로 나가지 않는다. */
+  max-width: min(320px, calc(100vw - 24px));
+  max-height: min(60vh, 420px);
+  padding: 4px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--dss-menu-border);
+  border-radius: 8px;
+  background-color: var(--dss-menu-panel-bg);
+  box-shadow: 0 10px 24px var(--dss-menu-panel-shadow);
 }
 
 .dss-menu--inline .dss-menu__link {
-  /* 폰에서 이름을 눈에서만 감출 때(아래) 그 기준이 되는 자리다. */
-  position: relative;
+  /* 칸 하나가 목록 폭을 꽉 채운다 — 손대는 자리가 글자 폭만 한 것이 아니라
+     줄 전체가 되어야 목록처럼 읽힌다. */
+  flex: 1;
   /* 아래가 머리말에 붙는 탭이 아니므로 네 귀가 다 둥글다 — 손대면 알약
      모양으로 밝아진다. */
   border-radius: 6px;
+}
+
+/* 이름이 아주 길면 목록 폭을 밀어내는 대신 … 로 끝난다(위 max-width). */
+.dss-menu--inline .dss-menu__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dss-menu--inline .dss-menu__link:hover {
   background-color: var(--dss-menu-inline-bg-hover);
 }
 
-/* 지금 있는 서비스: 바탕을 끄고 굵기·색·밑줄만 남긴다. 밑줄(box-shadow 2px)과
-   굵기(600)·글자색은 위 기본 규칙에서 그대로 물려받는다. */
+/* 지금 있는 서비스: 바탕을 끄고 굵기·색·밑줄만 남긴다. 목록은 이미 제 바탕
+   (--dss-menu-panel-bg) 위에 떠 있어서 칸 하나만 또 다른 바탕을 갖는 것이
+   층을 하나 더 만든다. 밑줄(box-shadow 2px)과 굵기(600)·글자색은 위 기본
+   규칙에서 그대로 물려받는다 — 색 하나에 기대지 않는다(UI_GUIDELINE 7절).
+   🔴 여기서 box-shadow 나 font-weight 를 덮으면 「지금 여기」 표시가 색
+   하나만 남는다. */
 .dss-menu--inline .dss-menu__link[data-current="true"] {
   background-color: transparent;
 }
@@ -256,26 +402,28 @@
 }
 
 /*
- * 폰(<768px)에서는 **아이콘만** 보인다.
+ * 폰(<768px)에서는 **단추에 아이콘만** 보인다.
  *
- * 머리말 한 줄에 햄버거 · 제목 · 이 목록 · 알림종이 함께 들어가므로, 좁은
- * 화면에서 칸마다 이름까지 싣고 있으면 자리를 다투게 된다. 이름을 지우면 칸
- * 하나가 아이콘 하나 폭으로 줄어 그럴 여지가 사라진다.
+ * 머리말 한 줄에 햄버거 · 제목 · 이 단추 · 알림종이 함께 들어가므로, 좁은
+ * 화면에서 단추가 이름까지 싣고 있으면 자리를 다투게 된다. 이름을 감추면
+ * 단추가 아이콘 하나 폭으로 줄어 그럴 여지가 사라진다.
  *
+ * 🔴 감추는 것은 **단추뿐이다.** 펼친 목록 안에서는 폰에서도 이름이 그대로
+ *    보인다 — 목록은 머리말 폭을 다투지 않고 떠서 그려지고, 이름 없이
+ *    이모지만 늘어선 목록은 고를 수가 없다.
  * 🔴 이름은 **눈에서만** 감춘다(clip) — 마크업에 그대로 남아 화면 낭독기는
- *    여전히 "계측기" 로 읽는다. display:none 으로 지우면 링크 이름이 이모지
- *    하나가 되어 어디로 가는지 알 수 없다.
- * 🔴 아이콘은 선택값이다(types.ts). 없는 칸은 🔗 하나로 전부 같아 보이므로,
- *    그 칸만 이름 첫 글자를 대신 보인다(ServiceMenuBar 의 serviceInitial).
- * 🔴 「지금 여기」는 이름이 사라져도 **2px 밑줄**로 남는다 — 굵기와 글자색은
- *    이모지에 먹히지 않지만 밑줄은 글자 모양과 무관한 표시다.
+ *    여전히 "계측기" 로 읽는다. display:none 으로 지우면 단추 이름이 이모지
+ *    하나가 되어 무엇을 여는 단추인지 알 수 없다.
+ * 🔴 아이콘은 선택값이다(types.ts). 아이콘이 없는 서비스에 있으면 단추가
+ *    🔗 하나가 되어 어디 있는지 알 수 없으므로, 그때만 이름 첫 글자를 대신
+ *    보인다(ServiceMenuBar 의 serviceInitial).
  *
  * 768px 은 사이트들이 쓰는 Tailwind 의 `md` 와 같은 값이다(A/S 머리말도 그
  * 폭에서 햄버거를 감춘다). `not all and (min-width:)` 로 적은 것은 `md:` 의
  * 정확한 여집합이라 0.5px 틈이 생기지 않기 때문이다.
  */
 @media not all and (min-width: 768px) {
-  .dss-menu--inline .dss-menu__name {
+  .dss-menu--inline .dss-menu__label {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -287,11 +435,11 @@
     white-space: nowrap;
   }
 
-  .dss-menu--inline .dss-menu__link[data-has-icon="false"] .dss-menu__icon {
+  .dss-menu--inline .dss-menu__summary[data-has-icon="false"] .dss-menu__icon {
     display: none;
   }
 
-  .dss-menu--inline .dss-menu__link[data-has-icon="false"] .dss-menu__initial {
+  .dss-menu--inline .dss-menu__summary[data-has-icon="false"] .dss-menu__initial {
     display: inline-block;
   }
 }
@@ -318,6 +466,8 @@
   --dss-menu-current-bg: #18181b;
   --dss-menu-current-fg: #fafafa;
   --dss-menu-accent: #fafafa;
+  --dss-menu-panel-bg: #18181b;
+  --dss-menu-panel-shadow: rgba(0, 0, 0, 0.55);
   --dss-menu-color-scheme: dark;
 }
 
@@ -337,7 +487,9 @@
     --dss-menu-current-bg: #18181b;
     --dss-menu-current-fg: #fafafa;
     --dss-menu-accent: #fafafa;
-    --dss-menu-color-scheme: dark;
+    --dss-menu-panel-bg: #18181b;
+  --dss-menu-panel-shadow: rgba(0, 0, 0, 0.55);
+  --dss-menu-color-scheme: dark;
   }
 }
 
@@ -356,6 +508,8 @@
   --dss-menu-current-bg: #ffffff;
   --dss-menu-current-fg: #18181b;
   --dss-menu-accent: #18181b;
+  --dss-menu-panel-bg: #ffffff;
+  --dss-menu-panel-shadow: rgba(9, 9, 11, 0.14);
   --dss-menu-color-scheme: light;
 }
 

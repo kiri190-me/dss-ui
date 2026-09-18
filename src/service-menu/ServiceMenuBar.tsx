@@ -21,6 +21,14 @@ import type { ServiceMenuEntry } from "./types";
  * 껍데기 안에서 클라이언트 조각으로 그려질 수도 있다(A/S 의 AppShell).
  * 붙이는 순간 뒤쪽 한 가지만 가능해지므로 붙이지 않는다.
  *
+ * ── 🔴 펼치고 접는 것도 자바스크립트 없이 한다 ───────────────────────────
+ * 머리말 안에 앉는 모습(variant="inline")은 드롭다운이지만 상태를 들지
+ * 않는다. <details> + <summary> 라 **브라우저가 스스로** 펼치고 접고,
+ * 안에 든 것은 여전히 평범한 <a href> 라 눌리면 그대로 나간다.
+ * `<select onChange>` 로 만들면 스크립트가 붙기 전에는 아무 데도 갈 수
+ * 없는데, 사내망에서는 스크립트가 늦게 붙는 일이 실제로 있다(개선요청
+ * 머리말이 로그아웃 <form> 을 그대로 두는 것과 같은 이유다).
+ *
  * ── next/link 를 쓰지 않는다 ─────────────────────────────────────────────
  * 여기 링크는 **다른 앱(다른 포트/다른 호스트)** 으로 가는 주소다. next/link
  * 의 클라이언트 전환은 같은 앱 안에서만 뜻이 있고, 밖으로 나가는 주소에는
@@ -50,12 +58,12 @@ export const DEFAULT_SERVICE_ICON = "🔗";
 /**
  * 아이콘이 **없는** 서비스를 좁은 화면에서 대신 가리키는 한 글자.
  *
- * 왜 필요한가: `variant="inline"` 은 폰(<768px)에서 이름을 눈에서 감추고
- * 아이콘만 보인다. 그런데 아이콘은 선택값이라(types.ts — 없으면 키 자체가
- * 없다) 그 칸들은 전부 기본 아이콘 🔗 하나가 된다 — **아이콘 없는 서비스가
- * 둘이면 둘이 똑같아져** 어디로 가는 링크인지 눌러 봐야 안다. 이름의 첫
- * 글자는 서로 다를 가능성이 훨씬 크고("개"선요청 · "견"적), 한글·영문 모두
- * 한 칸에 들어간다.
+ * 왜 필요한가: `variant="inline"` 의 단추는 폰(<768px)에서 이름을 눈에서
+ * 감추고 아이콘만 보인다. 그런데 아이콘은 선택값이라(types.ts — 없으면 키
+ * 자체가 없다) 그런 서비스에 있을 때 단추는 기본 아이콘 🔗 하나가 된다 —
+ * **어느 시스템에 있는지 단추만 보고는 알 수 없다.** 이름의 첫 글자는
+ * 서로 다를 가능성이 훨씬 크고("개"선요청 · "견"적), 한글·영문 모두 한
+ * 칸에 들어간다.
  *
  * 🔴 빈 칸만은 남기지 않는다: 이름이 비어 있으면(정석대로면
  * normalizeServiceMenu 가 이미 걸렀을 값이다) 기본 아이콘으로 떨어진다.
@@ -83,16 +91,17 @@ export type ServiceMenuColorScheme = "host" | "light" | "dark" | "system";
  * **어디에 앉는가.** 사이트가 고른다 — 이 묶음은 스스로 알아내려 하지 않는다
  * (머리말의 구조는 사이트마다 다르고, 그것을 짐작하는 순간 틀리기 시작한다).
  *
- * - `"bar"`(기본): 머리말 **위**에 독립된 띠로 앉는다. 한 단 눌린 바탕에,
- *   지금 있는 칸만 머리말과 같은 색으로 떠 있는 **브라우저 탭 은유**다.
- *   계측기·개선요청이 이 모습으로 쓰고 있다.
- * - `"inline"`: 머리말 **안**에 한 줄로 앉는다. 바탕도 아래 테두리도 없이
- *   머리말 위에 그대로 얹히므로, 지금 있는 칸은 바탕이 아니라 **굵기·색·
- *   2px 밑줄**로 알린다(흰 머리말 위에서는 「흰 칸으로 띄우는」 탭 은유가
- *   보이지 않는다). A/S 가 이 모습을 고른 이유는 README 3절에 있다.
+ * - `"bar"`(기본): 머리말 **위**에 독립된 띠로 앉는다. 칸이 가로로 늘어서고,
+ *   한 단 눌린 바탕에 지금 있는 칸만 머리말과 같은 색으로 떠 있는
+ *   **브라우저 탭 은유**다.
+ * - `"inline"`: 머리말 **안**에 **드롭다운 단추 하나**로 앉는다. 단추에는
+ *   지금 있는 서비스가 서고(넓은 화면은 아이콘 + 이름, 폰은 아이콘만),
+ *   누르면 전체 목록이 아래로 펼쳐진다. 가로로 늘어놓지 않으므로 서비스가
+ *   다섯이든 열이든 **머리말이 차지하는 폭이 그대로다**(2026-09-18 사용자
+ *   결정 — README 3절).
  *
  * 🔴 기본값이 `"bar"` 인 것은 되돌릴 수 없는 약속이다 — 이미 그 모습으로
- *    커밋된 사이트가 둘 있다.
+ *    커밋된 사이트가 있다.
  */
 export type ServiceMenuVariant = "bar" | "inline";
 
@@ -106,11 +115,18 @@ export type ServiceMenuBarProps = {
   /**
    * 지금 있는 서비스의 id(= 이 사이트의 client_id). 그 칸이 눌린 상태로
    * 그려진다. 모르면 넘기지 않아도 된다 — 아무 칸도 눌리지 않을 뿐이다.
+   *
+   * `variant="inline"` 에서는 이 값이 **드롭다운 단추에 서는 얼굴**까지
+   * 정한다. 모르면 단추는 아래 `label` 을 단다.
    */
   currentServiceId?: string | null;
   /**
    * 화면 낭독기가 읽을 이 띠의 이름. 사이트마다 부르는 말이 다를 수 있어
    * 열어 둔다(기본값은 그냥 두어도 된다).
+   *
+   * `variant="inline"` 에서 지금 있는 서비스를 모를 때는 이 글자가 그대로
+   * 드롭다운 단추에 선다 — 눈에도 보이는 말이 되므로 사이트가 이 값을
+   * 바꿀 때는 그것까지 생각해 고른다.
    */
   label?: string;
   /** 밝기를 무엇에 맞출지. 위 ServiceMenuColorScheme 참조. */
@@ -153,68 +169,132 @@ export function ServiceMenuBar({
   // 나중에 적힌 것이 이긴다 — 사이트 것이 이겨야 한다).
   const ownClasses = variant === "inline" ? "dss-menu dss-menu--inline" : "dss-menu";
 
+  // ── 드롭다운 단추에 세울 얼굴(variant="inline" 일 때만 쓴다) ────────────
+  //
+  // 지금 있는 서비스를 알면 그 서비스를, 모르면 띠 이름(label)을 세운다.
+  // 「모른다」는 실제로 생긴다: 사이트가 제 client_id 를 안 넘겼거나, 넘겼는데
+  // 포털이 준 목록에 그 서비스가 없을 때다. 그때 단추가 비어 버리면 목록을
+  // 펼칠 방법 자체가 사라지므로, 얼굴은 어떤 경우에도 하나 세운다.
+  const current =
+    currentServiceId === null || currentServiceId === undefined
+      ? null
+      : (drawable.find((service) => service.id === currentServiceId) ?? null);
+
+  // 아이콘은 선택값이다. 아래 링크들과 **같은 기준**으로 본다(null 도 없는 것).
+  const currentIcon = current === null ? null : (current.icon ?? null);
+
+  // 폰에서 단추는 아이콘 하나로 줄어든다. 아이콘이 없는 서비스에 있으면 그
+  // 단추가 🔗 하나가 되어 **어느 시스템에 있는지 알 수 없으므로**, 그 경우만
+  // 이름 첫 글자를 대신 세운다(serviceInitial 참조). 지금 서비스를 모를 때는
+  // 첫 글자를 딸 이름 자체가 없으니 기본 아이콘 하나로 둔다.
+  const buttonInitial =
+    current !== null && currentIcon === null ? serviceInitial(current.name) : null;
+  const buttonIcon = currentIcon ?? DEFAULT_SERVICE_ICON;
+  const buttonName = current === null ? label : current.name;
+
+  const list = (
+    <ul className="dss-menu__list">
+      {drawable.map((service, index) => {
+        // currentServiceId 가 없거나 목록에 없는 값이면 아무 칸도 켜지지
+        // 않는다 — 그래도 띠는 멀쩡히 그려진다. 사이트가 자기 id 를
+        // 잘못 넘긴 날 화면이 죽어서는 안 된다.
+        const isCurrent = currentServiceId !== null && currentServiceId !== undefined && service.id === currentServiceId;
+
+        // 포털이 이 칸에 아이콘을 실어 보냈는가. `?? DEFAULT_SERVICE_ICON`
+        // 과 **같은 기준**으로 본다(null 도 없는 것으로 친다) — 기준이
+        // 어긋나면 아이콘 자리에 아무것도 없는 칸이 생긴다.
+        const ownIcon = service.icon ?? null;
+
+        return (
+          // key 에 차례를 섞는다. id 가 겹친 목록(정석대로라면
+          // normalizeServiceMenu 가 걸렀을)이 들어와도 React 가
+          // 경고를 쏟지 않게 하기 위한 것이다.
+          <li className="dss-menu__item" key={`${index}-${service.id}`}>
+            <a
+              className="dss-menu__link"
+              href={service.url}
+              // aria-current 는 「지금 보고 있는 쪽」의 표준 표시다. 색만으로
+              // 알리지 않는다 — 화면 낭독기와 색약 사용자 모두에게 필요하다
+              // (UI_GUIDELINE 7절).
+              aria-current={isCurrent ? "page" : undefined}
+              // 색을 고르는 열쇠는 CSS 에서도 이 속성이다. 클래스를
+              // 갈아 끼우는 대신 속성을 쓰면, 사이트가 "지금 칸만 다르게"
+              // 를 제 CSS 한 줄로 덮어쓸 수 있다.
+              data-current={isCurrent ? "true" : "false"}
+              data-service-id={service.id}
+              // ⚠️ 지금 이 값에 걸리는 CSS 규칙은 **없다.** 원래는 머리말
+              // 안에 앉은 목록이 폰에서 아이콘만 보일 때 쓰였는데, 그 모습이
+              // 드롭다운이 되면서(2026-09-18) 그 판단이 단추 쪽
+              // (.dss-menu__summary)으로 옮겨 갔다 — 펼친 목록에서는 이름이
+              // 늘 보이므로 아이콘이 없어도 헷갈리지 않는다.
+              // 그래도 지우지 않는 이유는 하나뿐이다: 기본 모습("bar")의
+              // 마크업을 글자 하나도 바꾸지 않기로 한 약속. 세 사이트가 모두
+              // 새 모습으로 옮겨 간 뒤 따로 걷어낸다.
+              data-has-icon={ownIcon === null ? "false" : "true"}
+            >
+              <span className="dss-menu__icon" aria-hidden="true">
+                {ownIcon ?? DEFAULT_SERVICE_ICON}
+              </span>
+              {ownIcon === null && (
+                // ⚠️ 위 data-has-icon 과 한 짝이고, 같은 이유로 **지금은
+                // 어디에서도 보이지 않는다**(.dss-menu__initial 의 기본값이
+                // display: none 이고, 그것을 켜 주는 규칙은 이제 단추에만
+                // 걸린다). 기본 모습의 마크업을 지키려고 남겨 둔 것이다.
+                <span className="dss-menu__initial" aria-hidden="true">
+                  {serviceInitial(service.name)}
+                </span>
+              )}
+              {/* 🔴 이름은 폰에서도 마크업에 남는다 — CSS 가 눈에서만
+                  감춘다(clip). 이모지 하나만 읽히면 낭독기 사용자는 어디로
+                  가는 링크인지 알 수 없다. */}
+              <span className="dss-menu__name">{service.name}</span>
+            </a>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
   return (
     <nav
       className={className ? `${ownClasses} ${className}` : ownClasses}
       aria-label={label}
       data-color-scheme={colorScheme}
     >
-      <ul className="dss-menu__list">
-        {drawable.map((service, index) => {
-          // currentServiceId 가 없거나 목록에 없는 값이면 아무 칸도 켜지지
-          // 않는다 — 그래도 띠는 멀쩡히 그려진다. 사이트가 자기 id 를
-          // 잘못 넘긴 날 화면이 죽어서는 안 된다.
-          const isCurrent = currentServiceId !== null && currentServiceId !== undefined && service.id === currentServiceId;
-
-          // 포털이 이 칸에 아이콘을 실어 보냈는가. `?? DEFAULT_SERVICE_ICON`
-          // 과 **같은 기준**으로 본다(null 도 없는 것으로 친다) — 기준이
-          // 어긋나면 아이콘 자리에 아무것도 없는 칸이 생긴다.
-          const ownIcon = service.icon ?? null;
-
-          return (
-            // key 에 차례를 섞는다. id 가 겹친 목록(정석대로라면
-            // normalizeServiceMenu 가 걸렀을)이 들어와도 React 가
-            // 경고를 쏟지 않게 하기 위한 것이다.
-            <li className="dss-menu__item" key={`${index}-${service.id}`}>
-              <a
-                className="dss-menu__link"
-                href={service.url}
-                // aria-current 는 「지금 보고 있는 쪽」의 표준 표시다. 색만으로
-                // 알리지 않는다 — 화면 낭독기와 색약 사용자 모두에게 필요하다
-                // (UI_GUIDELINE 7절).
-                aria-current={isCurrent ? "page" : undefined}
-                // 색을 고르는 열쇠는 CSS 에서도 이 속성이다. 클래스를
-                // 갈아 끼우는 대신 속성을 쓰면, 사이트가 "지금 칸만 다르게"
-                // 를 제 CSS 한 줄로 덮어쓸 수 있다.
-                data-current={isCurrent ? "true" : "false"}
-                data-service-id={service.id}
-                // 좁은 화면에서 이름을 감추는 모습(variant="inline")이 이
-                // 값으로 갈린다 — 아이콘이 없는 칸은 🔗 대신 이름 첫 글자를
-                // 보인다. 두 모습 모두 마크업은 같고, 무엇을 보일지는 CSS 가
-                // 고른다(이 조각은 화면 폭을 모른다 — 서버에서도 그려진다).
-                data-has-icon={ownIcon === null ? "false" : "true"}
-              >
-                <span className="dss-menu__icon" aria-hidden="true">
-                  {ownIcon ?? DEFAULT_SERVICE_ICON}
-                </span>
-                {ownIcon === null && (
-                  // 기본 모습에서는 CSS 가 감춘다(display: none) — 지금 그
-                  // 모습으로 커밋된 사이트들의 화면이 한 픽셀도 달라지지
-                  // 않는다. aria-hidden 인 이유는 아래 이름이 낭독기용으로
-                  // 늘 남아 있어서다(감추는 것은 **눈에서만**이다).
-                  <span className="dss-menu__initial" aria-hidden="true">
-                    {serviceInitial(service.name)}
-                  </span>
-                )}
-                {/* 🔴 이름은 폰에서도 마크업에 남는다 — CSS 가 눈에서만
-                    감춘다(clip). 이모지 하나만 읽히면 낭독기 사용자는 어디로
-                    가는 링크인지 알 수 없다. */}
-                <span className="dss-menu__name">{service.name}</span>
-              </a>
-            </li>
-          );
-        })}
-      </ul>
+      {variant === "inline" ? (
+        // 🔴 <details> 인 이유: 펼치고 접는 일을 **브라우저가** 한다. 상태도
+        // 이벤트 핸들러도 없으므로 이 조각은 서버 컴포넌트로 남고, 스크립트가
+        // 아직 안 붙은 화면에서도 눌러서 목록을 열고 링크로 나갈 수 있다.
+        // <summary> 는 낭독기에 단추로 읽히고 펼침 여부(aria-expanded)도
+        // 브라우저가 붙여 준다 — 우리가 손으로 달 것이 없다.
+        <details className="dss-menu__dropdown">
+          <summary
+            className="dss-menu__summary"
+            // 폰에서 무엇을 보일지 CSS 가 이 값으로 고른다. 뜻은 「아이콘
+            // 자리에 그대로 보여도 되는 글자가 있는가」다 — "false" 일 때만
+            // 아래 첫 글자가 대신 켜진다(두 값이 동시에 보이면 겹친다).
+            data-has-icon={buttonInitial === null ? "true" : "false"}
+          >
+            <span className="dss-menu__icon" aria-hidden="true">
+              {buttonIcon}
+            </span>
+            {buttonInitial !== null && (
+              <span className="dss-menu__initial" aria-hidden="true">
+                {buttonInitial}
+              </span>
+            )}
+            {/* 🔴 이름은 폰에서도 마크업에 남는다 — CSS 가 눈에서만 감춘다
+                (clip). 지우면 단추의 이름이 이모지 하나가 되어 낭독기
+                사용자는 무엇을 여는 단추인지 알 수 없다. 펼침 삼각형은
+                CSS(::after)가 그린다 — 뜻이 없는 글자라 마크업에 두지
+                않는다. */}
+            <span className="dss-menu__label">{buttonName}</span>
+          </summary>
+          {list}
+        </details>
+      ) : (
+        list
+      )}
     </nav>
   );
 }
