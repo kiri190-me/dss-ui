@@ -31,6 +31,15 @@ export type {
   NotificationBellProps,
   NotificationBellColorScheme,
 } from "./notification-bell/NotificationBell";
+/**
+ * 🔴 종이 **펼쳐지면** 창에 던져지는 사건의 이름.
+ *
+ * 서버 컴포넌트에서 종을 그리는 사이트(개선요청이 그렇다)는 `onOpen` 에
+ * 평범한 함수를 넘길 수 없다 — 클라이언트 경계를 건너는 것은 서버 액션뿐이다.
+ * 그런 사이트는 아무 client 조각에서나 창에 귀를 붙이면 된다. 듣는 사람이
+ * 없으면 아무 일도 일어나지 않는다(events.ts).
+ */
+export { BELL_OPENED_EVENT } from "./notification-bell/events";
 export { isSafeNotificationHref } from "./notification-bell/normalize";
 export { notificationToneIndex, NOTIFICATION_TONE_COUNT } from "./notification-bell/tone";
 export type { NotificationBellItem } from "./notification-bell/types";

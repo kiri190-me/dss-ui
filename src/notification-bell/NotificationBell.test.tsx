@@ -281,3 +281,131 @@ test("줄이 열이어도 그린다 — 목록은 제 안에서 굴러간다(CSS
 
   assert.equal(열쇠들(html).length, 10);
 });
+
+/* ── 나중에 연 선택 자리 넷 ───────────────────────────────────────────────
+ *
+ * showWhenEmpty · emptyLabel · footer · onOpen. 네 사이트가 이미 이 종을
+ * 싣고 있으므로 **안 넘겼을 때가 예전과 같다**는 것이 첫째 시험이다.
+ */
+
+test("🔴 새 자리 넷을 안 넘기면 마크업이 예전과 한 글자도 다르지 않다", () => {
+  const 예전 = renderToStaticMarkup(<NotificationBell items={세줄} count={3} />);
+
+  // 자리를 열기 전에 없던 것이 슬쩍 끼어들지 않았다.
+  assert.equal(예전.includes("dss-bell__footer"), false);
+  assert.equal(예전.includes("dss-bell__empty"), false);
+
+  // 🔴 undefined 를 **대놓고** 넘겨도 같다. 사이트는 조건부로 값을 만들어
+  //    넘기므로(`footer={권한안내 ?? undefined}`) 실제로 이렇게 들어온다.
+  assert.equal(
+    renderToStaticMarkup(
+      <NotificationBell
+        items={세줄}
+        count={3}
+        showWhenEmpty={false}
+        emptyLabel={undefined}
+        footer={undefined}
+        onOpen={undefined}
+      />
+    ),
+    예전
+  );
+
+  // 목록이 비면 여전히 아무것도 그리지 않는다 — 기본값이 그 판단을 지킨다.
+  assert.equal(renderToStaticMarkup(<NotificationBell items={[]} count={9} />), "");
+});
+
+test("🔴 showWhenEmpty 를 켜면 빈 목록에도 종이 서고, 사이트가 준 글자가 나온다", () => {
+  const html = renderToStaticMarkup(
+    <NotificationBell items={[]} count={0} showWhenEmpty emptyLabel="새 알림이 없습니다" />
+  );
+
+  assert.match(html, /<details class="dss-bell"/, "종이 서야 한다");
+  assert.match(html, /class="dss-bell__empty">새 알림이 없습니다</);
+  assert.equal(열쇠들(html).length, 0);
+  assert.equal(배지(html), null, "빈 종에 배지가 붙으면 거짓말이다");
+  assert.equal(이름(html), "알림");
+});
+
+test("빈 종은 그릴 수 없는 주소만 왔을 때도 선다 — 줄이 다 빠진 것도 빈 것이다", () => {
+  const html = renderToStaticMarkup(
+    <NotificationBell items={[줄({ href: "javascript:alert(1)" })]} count={1} showWhenEmpty />
+  );
+
+  assert.match(html, /<details class="dss-bell"/);
+  assert.equal(열쇠들(html).length, 0);
+  assert.equal(html.includes("javascript:"), false);
+});
+
+test("🔴 emptyLabel 에 기본값을 두지 않는다 — 말투는 사이트의 것이다", () => {
+  const html = renderToStaticMarkup(<NotificationBell items={[]} count={0} showWhenEmpty />);
+
+  assert.match(html, /<details class="dss-bell"/);
+  assert.equal(html.includes("dss-bell__empty"), false, "묶음이 말을 지어내면 안 된다");
+});
+
+test("줄이 있으면 emptyLabel 은 나오지 않는다", () => {
+  const html = renderToStaticMarkup(
+    <NotificationBell items={세줄} count={3} showWhenEmpty emptyLabel="새 알림이 없습니다" />
+  );
+
+  assert.equal(html.includes("dss-bell__empty"), false);
+  assert.equal(열쇠들(html).length, 3);
+});
+
+test("🔴 footer 는 펼친 칸 **맨 아래**에 들어간다 — 마지막 줄 뒤, 목록 안", () => {
+  const html = renderToStaticMarkup(
+    <NotificationBell
+      items={세줄}
+      count={3}
+      footer={<button type="button">시험 알림 보내기</button>}
+    />
+  );
+
+  const 자리 = html.indexOf("dss-bell__footer");
+  assert.ok(자리 > 0, "자리가 아예 없다");
+  assert.ok(html.lastIndexOf("dss-bell__link") < 자리, "마지막 줄보다 앞에 있다");
+  // 🔴 떠서 그려지는 칸이 목록 자체다(CSS). 목록 밖에 두면 머리말이 두꺼워진다.
+  assert.ok(자리 < html.indexOf("</ul>"), "목록 밖으로 나갔다");
+  assert.match(html, /시험 알림 보내기/);
+});
+
+test("🔴 footer 를 안 넘기면 마크업이 한 글자도 늘지 않는다 — null·false 도 같다", () => {
+  const 없이 = renderToStaticMarkup(<NotificationBell items={세줄} count={3} />);
+
+  for (const 값 of [undefined, null, false]) {
+    assert.equal(
+      renderToStaticMarkup(<NotificationBell items={세줄} count={3} footer={값} />),
+      없이,
+      `footer={${String(값)}}`
+    );
+  }
+});
+
+test("빈 종에도 footer 는 들어간다 — 알림이 없을 때야말로 권한 안내가 필요하다", () => {
+  const html = renderToStaticMarkup(
+    <NotificationBell
+      items={[]}
+      count={0}
+      showWhenEmpty
+      emptyLabel="새 알림이 없습니다"
+      footer={<span>브라우저 알림 허용</span>}
+    />
+  );
+
+  const 빈줄 = html.indexOf("dss-bell__empty");
+  const 자리 = html.indexOf("dss-bell__footer");
+  assert.ok(빈줄 > 0 && 자리 > 빈줄, "빈 줄 아래에 붙어야 한다");
+  assert.match(html, /브라우저 알림 허용/);
+});
+
+test("🔴 onOpen 을 넘겨도 마크업은 그대로다 — 스크립트가 한 조각도 늘지 않는다", () => {
+  const 없이 = renderToStaticMarkup(<NotificationBell items={세줄} count={3} />);
+  const 있이 = renderToStaticMarkup(
+    <NotificationBell items={세줄} count={3} onOpen={() => {}} />
+  );
+
+  assert.equal(있이, 없이);
+  assert.equal(있이.includes("onclick"), false);
+  assert.equal(있이.includes("<script"), false);
+});

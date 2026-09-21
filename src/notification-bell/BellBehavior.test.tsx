@@ -2,16 +2,20 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
+  announceBellOpened,
   BellBehavior,
   dismissAllBells,
   dismissOutsideBell,
+  isOpenedBell,
   notificationKeyFromTarget,
   notifyAcknowledged,
   pickNotification,
   watchBell,
+  watchBellOpened,
   type BellEventHost,
   type BellHandle,
 } from "./BellBehavior";
+import { BELL_OPENED_EVENT } from "./events";
 import type { NotificationBellItem } from "./types";
 
 /**
@@ -224,4 +228,104 @@ test("🔴 확인 함수가 던져도 밖으로 새지 않는다 — 이동을 �
 test("🔴 서버에서 그려도 터지지 않고, 마크업을 한 글자도 늘리지 않는다", () => {
   assert.equal(renderToStaticMarkup(<BellBehavior items={[줄하나]} />), "");
   assert.equal(renderToStaticMarkup(<BellBehavior items={[]} onAcknowledge={() => {}} />), "");
+});
+
+/* ── 「펼쳐졌다」 알리기 ──────────────────────────────────────────────────
+ *
+ * 배지는 화면을 그린 순간의 값이라 열어 보는 때에는 낡아 있을 수 있다.
+ * 종이 펼쳐지면 사이트가 다시 셀 수 있게 알린다 — 받은 함수와 창 사건 둘로.
+ */
+
+/** 펼쳤는지 물어볼 수 있는 가짜 <details>. 진짜 DOM 은 아니다. */
+function 가짜종마디(펼쳤나: boolean): EventTarget {
+  return {
+    matches: (selector: string) => selector === "details.dss-bell[open]" && 펼쳤나,
+  } as unknown as EventTarget;
+}
+
+test("펼쳐진 우리 종만 고른다 — 접힌 것도, 마디 아닌 것도 아니다", () => {
+  assert.equal(isOpenedBell(null), false);
+  assert.equal(isOpenedBell(자리()), false, "matches 가 없는 것은 마디가 아니다");
+  assert.equal(isOpenedBell(가짜종마디(true)), true);
+  assert.equal(isOpenedBell(가짜종마디(false)), false, "접는 것도 toggle 로 온다");
+});
+
+test("🔴 펼칠 때만 알린다 — 접을 때는 알리지 않는다", () => {
+  const 듣는곳 = 가짜듣는곳();
+  let 알린횟수 = 0;
+  watchBellOpened(듣는곳.host, {
+    opened: () => {
+      알린횟수 += 1;
+    },
+  });
+
+  듣는곳.알린다("toggle", { target: 가짜종마디(true) });
+  assert.equal(알린횟수, 1);
+
+  듣는곳.알린다("toggle", { target: 가짜종마디(false) });
+  assert.equal(알린횟수, 1, "접을 때도 같은 이름으로 오는데 그때는 알리면 안 된다");
+
+  // 남의 <details>(사이트 본문의 접이식 칸 같은 것)도 문서까지 올라온다.
+  듣는곳.알린다("toggle", { target: 자리() });
+  assert.equal(알린횟수, 1);
+});
+
+test("🔴 toggle 도 capture 로 듣고, 뒷정리에서 같은 옵션으로 뗀다", () => {
+  // toggle 은 **버블하지 않는다** — capture 로 듣지 않으면 document 에서
+  // 아예 잡히지 않는다.
+  const 듣는곳 = 가짜듣는곳();
+  const 뗀다 = watchBellOpened(듣는곳.host, { opened: () => {} });
+
+  assert.deepEqual(
+    듣는곳.붙인것.map((하나) => 하나.type),
+    ["toggle"]
+  );
+  assert.deepEqual(듣는곳.붙인것[0].options, { capture: true });
+
+  뗀다();
+
+  assert.equal(듣는곳.뗀것.length, 1);
+  assert.equal(듣는곳.뗀것[0].listener, 듣는곳.붙인것[0].listener);
+  assert.deepEqual(듣는곳.뗀것[0].options, 듣는곳.붙인것[0].options);
+});
+
+test("🔴 펼쳐지면 받은 함수와 창 사건이 **둘 다** 불린다", () => {
+  // 함수는 client 그래프에서 종을 그리는 사이트가, 창 사건은 서버에서 그리는
+  // 사이트가 쓴다(서버 경계는 평범한 함수를 못 건넌다).
+  const 창 = new EventTarget();
+  const 들은것: string[] = [];
+  창.addEventListener(BELL_OPENED_EVENT, () => 들은것.push(BELL_OPENED_EVENT));
+
+  let 함수호출 = 0;
+  announceBellOpened(창, () => {
+    함수호출 += 1;
+  });
+
+  assert.equal(함수호출, 1);
+  assert.deepEqual(들은것, [BELL_OPENED_EVENT]);
+});
+
+test("🔴 듣는 사람이 없으면 아무 일도 아니다 — 함수를 안 넘겨도 터지지 않는다", () => {
+  assert.doesNotThrow(() => announceBellOpened(new EventTarget()));
+  assert.doesNotThrow(() => announceBellOpened(null));
+  assert.doesNotThrow(() => announceBellOpened(null, () => {}));
+});
+
+test("🔴 사이트가 넘긴 함수가 던져도 창 사건은 그대로 간다", () => {
+  const 창 = new EventTarget();
+  let 들었나 = false;
+  창.addEventListener(BELL_OPENED_EVENT, () => {
+    들었나 = true;
+  });
+
+  assert.doesNotThrow(() =>
+    announceBellOpened(창, () => {
+      throw new Error("사이트가 넘어졌다");
+    })
+  );
+  assert.equal(들었나, true, "한쪽이 넘어져도 다른 쪽은 부른다");
+});
+
+test("onOpen 을 넘겨도 서버에서 그려지고 마크업은 그대로 없다", () => {
+  assert.equal(renderToStaticMarkup(<BellBehavior items={[줄하나]} onOpen={() => {}} />), "");
 });

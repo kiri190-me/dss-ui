@@ -376,6 +376,53 @@
   color: var(--dss-bell-detail-fg);
 }
 
+/*
+ * 알림이 하나도 없을 때 적는 한 줄(showWhenEmpty 를 켠 사이트에서만 나온다).
+ *
+ * 글자는 사이트가 넘긴다 — 말투는 사이트의 것이다. 색은 상세와 같은 값을
+ * 쓴다: 「없다」는 알림 줄보다 한 단 흐려야 하고, 새 변수를 들이면 라이트·
+ * 다크 네 블록에 전부 적어야 하는데 여기서 새 색이 필요한 것은 아니다.
+ */
+.dss-bell__empty {
+  display: block;
+  padding: 12px 8px;
+  color: var(--dss-bell-detail-fg);
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+/*
+ * 사이트가 끼워 넣는 자리(브라우저 알림 권한 안내 · 「시험 알림」 단추 …).
+ *
+ * 🔴 **떠 있는 칸 안**에서 맨 아래에 붙어 있는다(sticky). 목록이 길면 제 안에서
+ *    굴러가는데, 그냥 두면 이 자리가 스무 줄 아래로 밀려 아무도 못 찾는다.
+ *    바탕을 칠하는 것은 그 때문이다 — 안 칠하면 굴러 올라온 줄이 비친다.
+ *    bottom 이 음수인 까닭은 목록의 안쪽 여백(4px)만큼 더 내려가 칸 바닥에
+ *    딱 붙게 하려는 것이다.
+ *
+ * 속에 무엇이 들어올지는 사이트가 정하므로 글꼴 크기·색만 기본으로 주고
+ * 배치는 강요하지 않는다.
+ */
+.dss-bell__footer {
+  position: sticky;
+  bottom: -4px;
+  display: block;
+  margin-top: 4px;
+  padding: 8px;
+  border-top: 1px solid var(--dss-bell-border);
+  background-color: var(--dss-bell-panel-bg);
+  color: var(--dss-bell-detail-fg);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* 줄이 하나도 없으면 가를 것도 없다 — 선만 덩그러니 남는다. */
+.dss-bell__empty + .dss-bell__footer,
+.dss-bell__list > .dss-bell__footer:first-child {
+  border-top: 0;
+}
+
 /* ── 다크 ────────────────────────────────────────────────────────────────
  *
  * 세 가지 신호를 받는다. 앞의 둘은 **사이트가 이미 쓰고 있는 표시**라 사이트가

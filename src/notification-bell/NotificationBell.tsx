@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { BellBehavior } from "./BellBehavior";
 import { isSafeNotificationHref } from "./normalize";
 import { notificationToneIndex } from "./tone";
@@ -109,6 +110,66 @@ export type NotificationBellProps = {
    *    컴포넌트 안에서 그린다면 아무 함수나 된다 — README 7절.
    */
   onAcknowledge?: (item: NotificationBellItem) => void;
+
+  // ── 아래 넷은 **선택 자리**다 ──────────────────────────────────────────
+  //
+  // 🔴 전부 선택이고, **안 넘기면 지금과 한 글자도 다르지 않다.** 없는 값의
+  //    갈래가 예전 코드 그대로이고, 마크업도 늘지 않는다.
+  //
+  // 왜 여는가: A/S 에는 이 종보다 먼저 만든 제 종이 있고, 거기에만 있는 것이
+  // 몇 가지 있었다(빈 종 · 브라우저 알림 권한 안내 · 시험 알림 단추 · 열면
+  // 다시 세기). 그중 「종을 열면 숫자가 맞아야 한다」와 「알림이 없어도 종이
+  // 서 있어야 한다」는 **어느 시스템에나 같은 요구**라 묶음이 맡고, 묶음에
+  // 올 수 없는 것들(브라우저 권한·사이트 자산을 무는 조각)은 사이트가 제
+  // 것을 끼워 넣도록 **자리만** 내준다.
+
+  /**
+   * 그릴 알림이 없어도 종을 그린다(기본 false = 지금대로 아무것도 안 그린다).
+   *
+   * 기본이 false 인 까닭은 지금 이 조각의 판단 그대로다 — 알림이 없는 것은
+   * 정상이고, 빈 종은 「눌러도 아무것도 없는 단추」를 머리말에 하나 남긴다.
+   * 그래도 머리말의 아이콘 자리가 들쭉날쭉하면 안 되는 사이트가 있고(A/S 의
+   * 지금 종이 그렇다), 아래 footer 에 넣을 것이 있는 사이트는 **알림이
+   * 없을 때도 그 자리가 필요하다.**
+   */
+  showWhenEmpty?: boolean;
+
+  /**
+   * 빈 목록일 때 펼친 칸에 적을 글자. showWhenEmpty 가 참일 때만 쓰인다.
+   *
+   * 🔴 **기본값을 두지 않는다** — 말투는 사이트의 것이다("새 알림이 없습니다"
+   *    라고 할지 "알림 없음"이라고 할지 묶음이 정할 일이 아니다). 안 넘기면
+   *    글자 없이 칸만 선다(footer 만 있는 종이 그 경우다).
+   */
+  emptyLabel?: string;
+
+  /**
+   * 펼친 칸 **맨 아래**에 사이트가 끼워 넣는 것.
+   *
+   * 브라우저 알림 권한 안내·「시험 알림」 단추처럼 **묶음에 올 수 없는**
+   * 조각이 들어가는 자리다. 왜 올 수 없나: 그것들은 `navigator` 를 만지고
+   * (이 묶음의 시험이 그 이름을 폴더 전체에서 금지한다), 사람마다 갈라 쓰는
+   * localStorage 를 읽고(묶음은 누가 로그인했는지 모른다), 사이트의 자산
+   * 경로를 문다. 자리만 내주면 다섯 사이트가 각자 제 것을 넣는다.
+   *
+   * 🔴 함수가 아니라 **노드**다. 그래서 서버 컴포넌트에서 이 종을 그려도
+   *    사이트의 client 조각을 그대로 넣을 수 있다(함수는 경계를 못 건넌다).
+   *
+   * 🔴 안 넘기면 **마크업이 한 글자도 늘지 않는다.**
+   */
+  footer?: ReactNode;
+
+  /**
+   * 종이 **펼쳐진** 순간. 접을 때는 부르지 않는다.
+   *
+   * 배지 숫자는 화면을 그린 순간의 값이라 열어 보는 때에는 낡아 있을 수
+   * 있다 — 이 신호를 받아 사이트가 다시 세면 된다.
+   *
+   * 🔴 **함수라서 서버 컴포넌트에서는 넘길 수 없다**(서버 액션만 경계를
+   *    건넌다). 서버에서 그리는 사이트는 대신 창 사건 BELL_OPENED_EVENT 를
+   *    들어라 — 같은 순간에 **둘 다** 울린다. README 7절.
+   */
+  onOpen?: () => void;
 };
 
 export function NotificationBell({
@@ -118,6 +179,10 @@ export function NotificationBell({
   colorScheme = "host",
   className,
   onAcknowledge,
+  showWhenEmpty = false,
+  emptyLabel,
+  footer,
+  onOpen,
 }: NotificationBellProps) {
   // 그릴 수 없는 주소는 **그 줄만** 버린다(isSafeNotificationHref 주석).
   // 🔴 이 값은 남의 시스템에서 온 글자다 — 포털이 한 번 걸렀더라도 여기서 또
@@ -132,7 +197,11 @@ export function NotificationBell({
   //
   // ⚠️ 이것은 A/S 의 지금 종과 **다른 점**이다(그쪽은 빈 종도 그린다). 붙이는
   //    사이트가 이 차이를 알고 골라야 한다 — README 7절에 적어 두었다.
-  if (drawable.length === 0) return null;
+  //
+  // 🔴 showWhenEmpty 를 넘긴 사이트만 이 판단을 뒤집는다. 안 넘기면(기본
+  //    false) 위 문단 그대로다 — 갈래가 예전과 한 글자도 다르지 않다.
+  const empty = drawable.length === 0;
+  if (empty && !showWhenEmpty) return null;
 
   // 배지는 받은 숫자 그대로. 숫자가 아니거나 0 이하면 그리지 않는다 — "0" 이라고
   // 적힌 배지는 할 일이 있는 것처럼 눈에 띄기만 한다.
@@ -142,6 +211,12 @@ export function NotificationBell({
   const name = badge === null ? label : `${label} ${badge}건`;
 
   const ownClasses = className ? `${OWN_CLASS} ${className}` : OWN_CLASS;
+
+  // 🔴 「없다」를 넓게 본다 — undefined 는 물론 null 과 false 도 안 그린다.
+  //    ReactNode 에는 그 셋이 다 들어 있고, 사이트는 `조건 && <조각 />` 로
+  //    넘기기 마련이라(조건이 거짓이면 false 가 온다) 좁게 보면 빈 칸만
+  //    덩그러니 남는다. 안 넘기면 마크업이 한 글자도 늘지 않는다.
+  const hasFooter = footer !== undefined && footer !== null && footer !== false;
 
   return (
     // 🔴 <details> 인 이유: 펼치고 접는 일을 **브라우저가** 한다. <summary> 는
@@ -223,12 +298,21 @@ export function NotificationBell({
             </li>
           );
         })}
+
+        {/* 🔴 빈 줄과 아래 자리는 **목록 안**에 들어간다. 떠서 그려지는 칸이
+            바로 이 <ul> 이라(CSS 의 position: absolute), 밖에 두면 머리말
+            안쪽에 그려져 머리말이 그만큼 두꺼워진다. */}
+        {empty && emptyLabel !== undefined && emptyLabel !== "" && (
+          <li className="dss-bell__empty">{emptyLabel}</li>
+        )}
+
+        {hasFooter && <li className="dss-bell__footer">{footer}</li>}
       </ul>
 
       {/* 🔴 아무것도 그리지 않는다(null). 바깥을 눌렀을 때·Esc 를 눌렀을 때
-          접는 일과, 줄을 눌렀을 때 사이트에 알리는 일만 얹는다 — 마크업은 한
-          글자도 늘지 않고, 스크립트가 없으면 그 셋만 없다(BellBehavior). */}
-      <BellBehavior items={drawable} onAcknowledge={onAcknowledge} />
+          접는 일과, 줄을 눌렀을 때·펼쳐졌을 때 사이트에 알리는 일만 얹는다 —
+          마크업은 한 글자도 늘지 않고, 스크립트가 없으면 그 넷만 없다. */}
+      <BellBehavior items={drawable} onAcknowledge={onAcknowledge} onOpen={onOpen} />
     </details>
   );
 }

@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { BELL_OPENED_EVENT } from "./events";
 import type { NotificationBellItem } from "./types";
 
 /**
- * 종에 **얹는** 세 가지 — 바깥을 눌러 접기 · Esc 로 접기 · 「확인했다」 알리기.
+ * 종에 **얹는** 네 가지 — 바깥을 눌러 접기 · Esc 로 접기 · 「확인했다」 알리기 ·
+ * 「펼쳐졌다」 알리기.
  *
  * ── 🔴 이것은 얹는 것이지 갈아치우는 것이 아니다 ─────────────────────────
  * 종의 펼침·접힘은 여전히 <details>/<summary> 가, 즉 **브라우저가** 한다. 이
@@ -12,9 +14,10 @@ import type { NotificationBellItem } from "./types";
  *   - 종을 누르면 펼쳐지고 다시 누르면 접히고,
  *   - 줄은 평범한 <a href> 라 눌리면 그대로 나가고,
  *   - 목록도 배지도 제대로 보인다.
- * 여기서 더해지는 것은 바깥을 눌러 접기 · Esc 로 접기 · **확인 기록** 셋뿐이다.
- * 앞의 둘은 없어도 종을 못 쓰게 되지 않고, 셋째는 실패해도 **이동을 막지
- * 않는다**(그 줄이 종에 남을 뿐이다 — A/S 가 같은 판단을 이미 하고 있다).
+ * 여기서 더해지는 것은 바깥을 눌러 접기 · Esc 로 접기 · **확인 기록** ·
+ * **「펼쳐졌다」 알림** 넷뿐이다. 앞의 둘은 없어도 종을 못 쓰게 되지 않고,
+ * 셋째는 실패해도 **이동을 막지 않는다**(그 줄이 종에 남을 뿐이다 — A/S 가
+ * 같은 판단을 이미 하고 있다). 넷째는 듣는 사람이 없으면 아무 일도 아니다.
  *
  * 그래서 NotificationBell 은 서버 컴포넌트로 남는다. "use client" 는 이 파일
  * 하나에만 붙는다 — 아무것도 그리지 않는 이 조각이 클라이언트 경계다.
@@ -159,6 +162,92 @@ export function notifyAcknowledged(
 }
 
 /**
+ * 방금 **펼쳐진** 우리 종인가.
+ *
+ * `toggle` 은 펼칠 때도 접을 때도 같은 이름으로 온다 — 어느 쪽인지는 사건이
+ * 아니라 **마디의 지금 상태**로 가린다. 사건이 손에 들어올 때 `open` 속성은
+ * 이미 새 값이라, 「펼쳐진 우리 종」을 그대로 물어보면 된다(OPEN_BELLS).
+ *
+ * `instanceof Element` 로 묻지 않는 이유는 notificationKeyFromTarget 과 같다 —
+ * node 에는 Element 가 없다. matches 를 가진 것만 마디로 친다.
+ */
+type MatchLike = { matches(selector: string): boolean };
+
+export function isOpenedBell(target: EventTarget | null): boolean {
+  const candidate = target as Partial<MatchLike> | null;
+  if (candidate === null || typeof candidate.matches !== "function") return false;
+  return candidate.matches(OPEN_BELLS);
+}
+
+/**
+ * 사건을 **던지는** 곳(실제로는 창). 시험에서는 진짜 EventTarget 을 넣는다.
+ * 듣는 곳(BellEventHost)과 모양이 다르므로 타입을 따로 둔다.
+ */
+export type BellAnnounceHost = {
+  dispatchEvent(event: Event): boolean;
+};
+
+/**
+ * 「종이 펼쳐졌다」를 **두 갈래로** 알린다 — 받은 함수와 창 사건.
+ *
+ * 🔴 둘 다 부르는 까닭: 함수는 client 그래프에서 종을 그리는 사이트(A/S 의
+ *    AppShell)가 쓰고, 창 사건은 서버에서 그리는 사이트(개선요청)가 쓴다.
+ *    어느 쪽을 쓸지 묶음이 고르지 않는다 — 둘 다 내주고 사이트가 고른다.
+ *
+ * 🔴 **한쪽이 넘어져도 다른 쪽은 부른다.** 사이트가 넘긴 함수에서 예외가
+ *    새면 브라우저의 사건 처리가 통째로 멈추는데, 그때 잃는 것이 「숫자를
+ *    다시 세기」 하나가 아니라 이 조각이 얹은 나머지까지가 된다.
+ */
+export function announceBellOpened(
+  host: BellAnnounceHost | null,
+  onOpen?: () => void
+): void {
+  if (onOpen) {
+    try {
+      onOpen();
+    } catch {
+      // 사이트가 넘어져도 창 사건은 그대로 던진다.
+    }
+  }
+
+  if (host === null) return;
+
+  try {
+    // 🔴 bubbles 도 cancelable 도 주지 않는다. 창에서 시작해 창에서 끝나는
+    //    알림이고, 막을 수 있는 것이 아니다.
+    host.dispatchEvent(new Event(BELL_OPENED_EVENT));
+  } catch {
+    // 듣는 사람이 없어도, 사건을 못 만드는 환경이어도 종은 그대로 쓴다.
+  }
+}
+
+/**
+ * 종이 **펼쳐지는** 것을 듣기 시작하고, 떼어내는 함수를 돌려준다.
+ *
+ * 🔴 watchBell 과 **따로** 두는 까닭: 저쪽 셋은 「열린 종을 어떻게 접나」라는
+ *    한 가지 일이고 이것은 다른 일이다. 무엇보다 저 함수의 시험이 「셋을
+ *    붙이고 셋을 뗀다」를 못 박고 있어, 거기에 넷째를 밀어 넣으면 이미
+ *    네 사이트가 쓰는 동작의 시험을 고쳐야 한다. 나누면 아무것도 안 건드린다.
+ *
+ * 🔴 `toggle` 은 **버블하지 않는다.** 그래도 document 에서 잡히는 것은
+ *    capture 단계로 듣기 때문이다 — 캡처는 bubbles 와 무관하게 조상부터
+ *    내려온다. LISTEN 을 그대로 쓰는 것이 그래서 중요하다.
+ */
+export function watchBellOpened(host: BellEventHost, deps: { opened: () => void }): () => void {
+  const onToggle = (event: Event) => {
+    // 접힌 것도, 남의 <details> 도 아니다 — 방금 펼쳐진 우리 종만.
+    if (!isOpenedBell(event.target)) return;
+    deps.opened();
+  };
+
+  host.addEventListener("toggle", onToggle, LISTEN);
+
+  return () => {
+    host.removeEventListener("toggle", onToggle, LISTEN);
+  };
+}
+
+/**
  * 진짜 화면에서 **지금** 펼쳐져 있는 종들을 집어 손잡이로 싼다.
  *
  * 사건이 올 때마다 다시 찾는다(한 번 찾아 두고 쓰지 않는다). 종은 사이트가
@@ -252,30 +341,43 @@ export function watchBell(
 export function BellBehavior({
   items,
   onAcknowledge,
+  onOpen,
 }: {
   items: readonly NotificationBellItem[];
   onAcknowledge?: (item: NotificationBellItem) => void;
+  /** 종이 펼쳐진 순간. 없어도 창 사건은 그대로 던진다(announceBellOpened). */
+  onOpen?: () => void;
 }): null {
-  const latest = useRef({ items, onAcknowledge });
+  const latest = useRef({ items, onAcknowledge, onOpen });
 
   // 그리는 동안이 아니라 그린 **뒤에** 담는다(렌더 중에 ref 를 건드리면
   // React 가 같은 렌더를 두 번 돌릴 때 값이 어긋난다).
   useEffect(() => {
-    latest.current = { items, onAcknowledge };
+    latest.current = { items, onAcknowledge, onOpen };
   });
 
-  useEffect(
-    () =>
-      watchBell(document, {
-        openHandles: () => openBells(document),
-        acknowledge: (target) => {
-          const picked = pickNotification(latest.current.items, notificationKeyFromTarget(target));
-          if (picked === null) return;
-          notifyAcknowledged(picked, latest.current.onAcknowledge);
-        },
-      }),
-    []
-  );
+  useEffect(() => {
+    const unwatch = watchBell(document, {
+      openHandles: () => openBells(document),
+      acknowledge: (target) => {
+        const picked = pickNotification(latest.current.items, notificationKeyFromTarget(target));
+        if (picked === null) return;
+        notifyAcknowledged(picked, latest.current.onAcknowledge);
+      },
+    });
+
+    // 🔴 창에 던진다(문서가 아니라). 서버에서 종을 그리는 사이트는 함수를
+    //    넘길 수 없어 이 사건이 유일한 길인데, 사이트의 client 조각이 귀를
+    //    붙이기 가장 쉬운 곳이 창이다.
+    const unwatchOpen = watchBellOpened(document, {
+      opened: () => announceBellOpened(window, latest.current.onOpen),
+    });
+
+    return () => {
+      unwatch();
+      unwatchOpen();
+    };
+  }, []);
 
   return null;
 }
