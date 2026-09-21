@@ -1,0 +1,506 @@
+/*
+ * 알림 종의 생김새.
+ *
+ * ── 왜 Tailwind 유틸리티가 아니라 제 CSS 인가 ────────────────────────────
+ * 사이트들이 전부 Tailwind v4 를 쓰지만 **다크 모드를 켜는 방식이 서로 다르다**:
+ *   - RF_Service_System : `@custom-variant dark (&:where(.dark, .dark *))`
+ *                         — 클래스로 켠다(사용자가 고른 테마).
+ *   - njlee(계측기)      : 다크 변형이 없고 `color-scheme: light` 로 라이트 고정.
+ * 이 상태에서 `dark:bg-…` 같은 유틸리티를 그대로 실으면 Tailwind 기본값인
+ * `prefers-color-scheme` 이 적용되어, 계측기에서는 OS 가 어두운 사람에게만
+ * **이 종 하나만** 까맣게 뜬다. 게다가 Tailwind v4 는 node_modules 안을 훑지
+ * 않으므로 묶음에서 건너간 클래스 이름에는 **규칙 자체가 없다** — 색이 조용히
+ * 안 나오고 오류도 없다. service-menu.css 가 같은 자리에서 같은 결론을 냈다.
+ *
+ * ── 색은 전부 변수다 ─────────────────────────────────────────────────────
+ * 사이트가 제 색으로 맞추고 싶으면 `.dss-bell { --dss-bell-panel-bg: … }` 한
+ * 줄로 덮는다.
+ *
+ * 🔴 여기 있는 `--dss-bell-*` 변수는 **라이트와 다크에 같은 이름이 다 있어야
+ *    한다**. 한쪽에만 있으면 그 색만 반대 모드 값을 물려받아 글자가 바탕에
+ *    묻는다 — notification-bell.css.test.ts 가 네 벌을 대조해 막는다.
+ *
+ * ── 종류 색(tone) ────────────────────────────────────────────────────────
+ * 열여섯 칸이고, 어느 칸에 앉을지는 종류 코드가 정한다(tone.ts). 값은 사이트들의
+ * Tailwind v4 가 내놓는 것과 **같은 oklch 값**을 그대로 적었다 — 같은 화면에
+ * 함께 뜨는 색이라 한 식구로 보여야 한다(라이트는 -700, 다크는 -400).
+ * 번호가 이웃한 칸끼리 색상환에서 멀어지도록 한 칸씩 건너뛰며 배치했다.
+ */
+
+/* ── 라이트(기본값) ───────────────────────────────────────────────────── */
+.dss-bell {
+  --dss-bell-fg: #52525b;
+  --dss-bell-fg-hover: #18181b;
+  --dss-bell-bg-hover: #e4e4e7;
+  --dss-bell-accent: #18181b;
+  /* 배지. 이 저장소가 「밀린 일」에 쓰는 amber 다(A/S 의 bg-amber-500 그대로). */
+  --dss-bell-badge-bg: oklch(76.9% 0.188 70.08);
+  --dss-bell-badge-fg: #ffffff;
+  --dss-bell-border: #e4e4e7;
+  /* 펼친 목록은 본문 **위에 떠서** 그려지므로 제 바탕이 있어야 한다 — 없으면
+     아래 글자가 비쳐 읽을 수 없다. */
+  --dss-bell-panel-bg: #ffffff;
+  --dss-bell-panel-shadow: rgba(9, 9, 11, 0.14);
+  --dss-bell-subject-fg: #18181b;
+  --dss-bell-detail-fg: #52525b;
+  --dss-bell-source-fg: #71717a;
+  --dss-bell-separator-fg: #a1a1aa;
+  --dss-bell-color-scheme: light;
+  --dss-bell-tone-0: oklch(50.5% 0.213 27.518);
+  --dss-bell-tone-1: oklch(52% 0.105 223.128);
+  --dss-bell-tone-2: oklch(52.5% 0.223 3.958);
+  --dss-bell-tone-3: oklch(50.8% 0.118 165.612);
+  --dss-bell-tone-4: oklch(49.6% 0.265 301.924);
+  --dss-bell-tone-5: oklch(53.2% 0.157 131.589);
+  --dss-bell-tone-6: oklch(45.7% 0.24 277.023);
+  --dss-bell-tone-7: oklch(55.3% 0.195 38.402);
+  --dss-bell-tone-8: oklch(50% 0.134 242.749);
+  --dss-bell-tone-9: oklch(51.4% 0.222 16.935);
+  --dss-bell-tone-10: oklch(51.1% 0.096 186.391);
+  --dss-bell-tone-11: oklch(51.8% 0.253 323.949);
+  --dss-bell-tone-12: oklch(52.7% 0.154 150.069);
+  --dss-bell-tone-13: oklch(49.1% 0.27 292.581);
+  --dss-bell-tone-14: oklch(55.5% 0.163 48.998);
+  --dss-bell-tone-15: oklch(48.8% 0.243 264.376);
+
+  color-scheme: var(--dss-bell-color-scheme);
+  /* 펼친 목록이 여기에 매달려 종 바로 아래로 떨어진다. 눈에서만 감춘 이름
+     (clip)이 기댈 자리이기도 하다 — 없으면 그 1px 짜리 글자가 페이지 어딘가로
+     튀어 나간다. */
+  position: relative;
+  display: inline-block;
+
+  /* 글꼴은 사이트 것을 그대로 쓴다 — 여기서 정하면 이 종만 다른 글꼴이 된다. */
+  font-family: inherit;
+}
+
+/* Tailwind preflight 이 없는 곳(미래의 어떤 사이트)에서도 배치가 무너지지
+   않게 이 안쪽만 border-box 로 못 박는다. 바깥에는 손대지 않는다. */
+.dss-bell,
+.dss-bell *,
+.dss-bell *::before,
+.dss-bell *::after {
+  box-sizing: border-box;
+}
+
+/*
+ * 종 단추.
+ *
+ * 머리말의 다른 아이콘 단추(햄버거 등)와 키를 맞춘다 — A/S 머리말이 쓰는
+ * h-9 w-9(36px)가 그 값이다. list-style: none 은 브라우저가 <summary> 앞에
+ * 그리는 삼각형을 끈다(웹킷은 아래에서 따로 꺼야 한다). 종 옆에 삼각형이
+ * 붙으면 아이콘 단추가 아니라 펼침 목록처럼 보인다.
+ */
+.dss-bell__summary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  color: var(--dss-bell-fg);
+  cursor: pointer;
+  list-style: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.dss-bell__summary::-webkit-details-marker {
+  display: none;
+}
+
+/* 손가락으로 누르는 화면에서는 36px 이 작다(권고 44px). 폰에서만 키운다 —
+   컴퓨터에서 머리말이 두꺼워지면 본문이 그만큼 줄어든다. */
+@media (pointer: coarse) {
+  .dss-bell__summary {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dss-bell__summary {
+    transition: none;
+  }
+}
+
+.dss-bell__summary:hover {
+  background-color: var(--dss-bell-bg-hover);
+  color: var(--dss-bell-fg-hover);
+}
+
+.dss-bell__summary:focus-visible {
+  outline: 2px solid var(--dss-bell-accent);
+  outline-offset: -2px;
+}
+
+.dss-bell__icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+/*
+ * 안 읽은 개수.
+ *
+ * 숫자는 **받은 값 그대로**라 자릿수를 우리가 정하지 못한다 — min-width 로
+ * 한 자리를 잡아 두고 넘치면 알약처럼 늘어나게 한다. tabular-nums 는 숫자가
+ * 바뀔 때 폭이 들썩이는 것을 막는다.
+ */
+.dss-bell__badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background-color: var(--dss-bell-badge-bg);
+  color: var(--dss-bell-badge-fg);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * 낭독기에만 읽히는 이름("알림 3건").
+ *
+ * 🔴 **눈에서만** 감춘다(clip) — display:none 으로 지우면 낭독기에서도 사라져
+ *    이 단추가 아무 이름 없이 읽힌다. 종은 아이콘 하나짜리 단추라 글자를 실을
+ *    자리가 없어서, 이름은 언제나 이 방식으로만 있다.
+ */
+.dss-bell__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/*
+ * 펼친 목록.
+ *
+ * 🔴 **떠서** 그려진다(position: absolute). 제자리에 그리면 종을 열 때마다
+ *    머리말이 목록 높이만큼 두꺼워져 본문이 아래로 밀린다.
+ *
+ * 오른쪽에 붙여 왼쪽으로 펼친다 — 종은 머리말 오른쪽 끝에 앉는 물건이라
+ * 왼쪽에 붙이면 목록이 화면 밖으로 나간다. 폭은 폰(360px)에서도 좌우 여백이
+ * 남게 잡는다. 목록이 길면 제 안에서 세로로 굴러가고, 끝까지 민 스크롤이
+ * 페이지로 새지 않는다(overscroll-behavior — 폰에서 화면이 통째로 튀는 그것).
+ */
+.dss-bell__list {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 4px);
+  right: 0;
+  width: min(20rem, calc(100vw - 2rem));
+  max-height: min(60vh, 420px);
+  margin: 0;
+  padding: 4px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  border: 1px solid var(--dss-bell-border);
+  border-radius: 8px;
+  background-color: var(--dss-bell-panel-bg);
+  box-shadow: 0 10px 24px var(--dss-bell-panel-shadow);
+}
+
+.dss-bell__item {
+  display: block;
+}
+
+.dss-bell__link {
+  display: block;
+  padding: 6px 8px;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: background-color 120ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dss-bell__link {
+    transition: none;
+  }
+}
+
+.dss-bell__link:hover {
+  background-color: var(--dss-bell-bg-hover);
+}
+
+/* outline-offset 이 음수인 이유: 줄 바깥으로 그리면 굴러가는 목록에서 테두리
+   절반이 잘린다. :focus-visible 만 쓴다 — 마우스로 눌렀을 때까지 테두리가
+   남으면 지저분하다. */
+.dss-bell__link:focus-visible {
+  outline: 2px solid var(--dss-bell-accent);
+  outline-offset: -2px;
+}
+
+/*
+ * 윗줄 — 종류 이름과 어느 시스템에서 왔는지.
+ *
+ * 아랫줄(대상 · 상세)에 끼워 넣지 않고 윗줄로 올린 이유는 잘림이다: 상세가
+ * 이미 잘릴 수 있는 자리라, 같은 줄에 글자를 더하면 그만큼 상세가 먼저 잘린다.
+ */
+.dss-bell__meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/*
+ * 종류 이름의 색. 🔴 **색만으로 종류를 알리지 않는다** — 이 칸에는 이름이
+ * 글자로 들어 있다(색약이신 분에게는 색 차이가 사라지고 흑백 인쇄에는 아무것도
+ * 남지 않는다). 색은 훑을 때 빨리 갈라 주는 보조 신호다.
+ */
+.dss-bell__kind {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dss-bell__kind[data-tone="0"] {
+  color: var(--dss-bell-tone-0);
+}
+
+.dss-bell__kind[data-tone="1"] {
+  color: var(--dss-bell-tone-1);
+}
+
+.dss-bell__kind[data-tone="2"] {
+  color: var(--dss-bell-tone-2);
+}
+
+.dss-bell__kind[data-tone="3"] {
+  color: var(--dss-bell-tone-3);
+}
+
+.dss-bell__kind[data-tone="4"] {
+  color: var(--dss-bell-tone-4);
+}
+
+.dss-bell__kind[data-tone="5"] {
+  color: var(--dss-bell-tone-5);
+}
+
+.dss-bell__kind[data-tone="6"] {
+  color: var(--dss-bell-tone-6);
+}
+
+.dss-bell__kind[data-tone="7"] {
+  color: var(--dss-bell-tone-7);
+}
+
+.dss-bell__kind[data-tone="8"] {
+  color: var(--dss-bell-tone-8);
+}
+
+.dss-bell__kind[data-tone="9"] {
+  color: var(--dss-bell-tone-9);
+}
+
+.dss-bell__kind[data-tone="10"] {
+  color: var(--dss-bell-tone-10);
+}
+
+.dss-bell__kind[data-tone="11"] {
+  color: var(--dss-bell-tone-11);
+}
+
+.dss-bell__kind[data-tone="12"] {
+  color: var(--dss-bell-tone-12);
+}
+
+.dss-bell__kind[data-tone="13"] {
+  color: var(--dss-bell-tone-13);
+}
+
+.dss-bell__kind[data-tone="14"] {
+  color: var(--dss-bell-tone-14);
+}
+
+.dss-bell__kind[data-tone="15"] {
+  color: var(--dss-bell-tone-15);
+}
+
+/* 어느 시스템에서 왔는가. 종류 이름보다 한 단 흐리다 — 여러 시스템의 알림이
+   섞여 있을 때만 필요한 값이고, 한 시스템만 쓰는 사이트에서는 같은 글자가
+   줄마다 반복된다. */
+.dss-bell__source {
+  margin-left: auto;
+  flex: 0 0 auto;
+  color: var(--dss-bell-source-fg);
+}
+
+/* 아랫줄 — 무엇에 대한 알림인가. */
+.dss-bell__line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* 대상은 줄지 않는다 — 인수번호가 "2025-0…"로 잘리면 무엇에 대한 알림인지
+   알 수 없다. 대신 아래 상세가 먼저 줄어든다. */
+.dss-bell__subject {
+  flex: 0 0 auto;
+  color: var(--dss-bell-subject-fg);
+  font-weight: 500;
+}
+
+.dss-bell__separator {
+  flex: 0 0 auto;
+  color: var(--dss-bell-separator-fg);
+}
+
+.dss-bell__detail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dss-bell-detail-fg);
+}
+
+/* ── 다크 ────────────────────────────────────────────────────────────────
+ *
+ * 세 가지 신호를 받는다. 앞의 둘은 **사이트가 이미 쓰고 있는 표시**라 사이트가
+ * 따로 할 일이 없고(A/S 는 <html class="dark">), 셋째는 이 종만 따로 고정하고
+ * 싶을 때다. 값은 라이트의 거울이다.
+ */
+.dark .dss-bell,
+[data-theme="dark"] .dss-bell,
+.dss-bell[data-color-scheme="dark"] {
+  --dss-bell-fg: #a1a1aa;
+  --dss-bell-fg-hover: #fafafa;
+  --dss-bell-bg-hover: #27272a;
+  --dss-bell-accent: #fafafa;
+  --dss-bell-badge-bg: oklch(66.6% 0.179 58.318);
+  --dss-bell-badge-fg: #ffffff;
+  --dss-bell-border: #27272a;
+  --dss-bell-panel-bg: #18181b;
+  --dss-bell-panel-shadow: rgba(0, 0, 0, 0.55);
+  --dss-bell-subject-fg: #fafafa;
+  --dss-bell-detail-fg: #a1a1aa;
+  --dss-bell-source-fg: #71717a;
+  --dss-bell-separator-fg: #52525b;
+  --dss-bell-color-scheme: dark;
+  --dss-bell-tone-0: oklch(70.4% 0.191 22.216);
+  --dss-bell-tone-1: oklch(78.9% 0.154 211.53);
+  --dss-bell-tone-2: oklch(71.8% 0.202 349.761);
+  --dss-bell-tone-3: oklch(76.5% 0.177 163.223);
+  --dss-bell-tone-4: oklch(71.4% 0.203 305.504);
+  --dss-bell-tone-5: oklch(84.1% 0.238 128.85);
+  --dss-bell-tone-6: oklch(67.3% 0.182 276.935);
+  --dss-bell-tone-7: oklch(75% 0.183 55.934);
+  --dss-bell-tone-8: oklch(74.6% 0.16 232.661);
+  --dss-bell-tone-9: oklch(71.2% 0.194 13.428);
+  --dss-bell-tone-10: oklch(77.7% 0.152 181.912);
+  --dss-bell-tone-11: oklch(74% 0.238 322.16);
+  --dss-bell-tone-12: oklch(79.2% 0.209 151.711);
+  --dss-bell-tone-13: oklch(70.2% 0.183 293.541);
+  --dss-bell-tone-14: oklch(82.8% 0.189 84.429);
+  --dss-bell-tone-15: oklch(70.7% 0.165 254.624);
+}
+
+/*
+ * OS 설정을 따르는 사이트용. colorScheme="system" 을 넘긴 종에만 걸린다 —
+ * 이 규칙이 무조건 걸리면 라이트로 고정한 사이트(계측기)에서 이 종만 까매진다.
+ * 바로 그 사고를 막으려고 기본값이 "host" 다.
+ */
+@media (prefers-color-scheme: dark) {
+  .dss-bell[data-color-scheme="system"] {
+    --dss-bell-fg: #a1a1aa;
+    --dss-bell-fg-hover: #fafafa;
+    --dss-bell-bg-hover: #27272a;
+    --dss-bell-accent: #fafafa;
+    --dss-bell-badge-bg: oklch(66.6% 0.179 58.318);
+    --dss-bell-badge-fg: #ffffff;
+    --dss-bell-border: #27272a;
+    --dss-bell-panel-bg: #18181b;
+    --dss-bell-panel-shadow: rgba(0, 0, 0, 0.55);
+    --dss-bell-subject-fg: #fafafa;
+    --dss-bell-detail-fg: #a1a1aa;
+    --dss-bell-source-fg: #71717a;
+    --dss-bell-separator-fg: #52525b;
+    --dss-bell-color-scheme: dark;
+    --dss-bell-tone-0: oklch(70.4% 0.191 22.216);
+    --dss-bell-tone-1: oklch(78.9% 0.154 211.53);
+    --dss-bell-tone-2: oklch(71.8% 0.202 349.761);
+    --dss-bell-tone-3: oklch(76.5% 0.177 163.223);
+    --dss-bell-tone-4: oklch(71.4% 0.203 305.504);
+    --dss-bell-tone-5: oklch(84.1% 0.238 128.85);
+    --dss-bell-tone-6: oklch(67.3% 0.182 276.935);
+    --dss-bell-tone-7: oklch(75% 0.183 55.934);
+    --dss-bell-tone-8: oklch(74.6% 0.16 232.661);
+    --dss-bell-tone-9: oklch(71.2% 0.194 13.428);
+    --dss-bell-tone-10: oklch(77.7% 0.152 181.912);
+    --dss-bell-tone-11: oklch(74% 0.238 322.16);
+    --dss-bell-tone-12: oklch(79.2% 0.209 151.711);
+    --dss-bell-tone-13: oklch(70.2% 0.183 293.541);
+    --dss-bell-tone-14: oklch(82.8% 0.189 84.429);
+    --dss-bell-tone-15: oklch(70.7% 0.165 254.624);
+  }
+}
+
+/*
+ * 라이트 고정은 **맨 뒤**에 둔다. 위의 `.dark .dss-bell` 과 우선순위가 같아서
+ * (둘 다 0-2-0), 나중에 적힌 이것이 이긴다 — 다크인 사이트에서도
+ * colorScheme="light" 를 넘기면 밝게 나온다.
+ */
+.dss-bell[data-color-scheme="light"] {
+  --dss-bell-fg: #52525b;
+  --dss-bell-fg-hover: #18181b;
+  --dss-bell-bg-hover: #e4e4e7;
+  --dss-bell-accent: #18181b;
+  --dss-bell-badge-bg: oklch(76.9% 0.188 70.08);
+  --dss-bell-badge-fg: #ffffff;
+  --dss-bell-border: #e4e4e7;
+  --dss-bell-panel-bg: #ffffff;
+  --dss-bell-panel-shadow: rgba(9, 9, 11, 0.14);
+  --dss-bell-subject-fg: #18181b;
+  --dss-bell-detail-fg: #52525b;
+  --dss-bell-source-fg: #71717a;
+  --dss-bell-separator-fg: #a1a1aa;
+  --dss-bell-color-scheme: light;
+  --dss-bell-tone-0: oklch(50.5% 0.213 27.518);
+  --dss-bell-tone-1: oklch(52% 0.105 223.128);
+  --dss-bell-tone-2: oklch(52.5% 0.223 3.958);
+  --dss-bell-tone-3: oklch(50.8% 0.118 165.612);
+  --dss-bell-tone-4: oklch(49.6% 0.265 301.924);
+  --dss-bell-tone-5: oklch(53.2% 0.157 131.589);
+  --dss-bell-tone-6: oklch(45.7% 0.24 277.023);
+  --dss-bell-tone-7: oklch(55.3% 0.195 38.402);
+  --dss-bell-tone-8: oklch(50% 0.134 242.749);
+  --dss-bell-tone-9: oklch(51.4% 0.222 16.935);
+  --dss-bell-tone-10: oklch(51.1% 0.096 186.391);
+  --dss-bell-tone-11: oklch(51.8% 0.253 323.949);
+  --dss-bell-tone-12: oklch(52.7% 0.154 150.069);
+  --dss-bell-tone-13: oklch(49.1% 0.27 292.581);
+  --dss-bell-tone-14: oklch(55.5% 0.163 48.998);
+  --dss-bell-tone-15: oklch(48.8% 0.243 264.376);
+}
+
+/*
+ * 인쇄에는 나오지 않는다. 계측기는 목록을 종이로 뽑고 A/S 도 견적서를 찍는다 —
+ * 종이에 남을 이유가 없는 화면 장치다.
+ */
+@media print {
+  .dss-bell {
+    display: none !important;
+  }
+}

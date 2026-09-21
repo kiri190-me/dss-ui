@@ -2,14 +2,15 @@
   "name": "@dss/ui",
   "version": "0.1.0",
   "private": true,
-  "description": "사내 시스템(A/S · 계측기 · 개선요청 …)이 함께 쓰는 화면 조각. 지금은 서비스 오가기 메뉴바 하나다.",
+  "description": "사내 시스템(A/S · 계측기 · 개선요청 …)이 함께 쓰는 화면 조각. 서비스 오가기 메뉴바와 알림 종.",
   "type": "module",
   "sideEffects": [
     "*.css"
   ],
   "exports": {
     ".": "./src/index.ts",
-    "./styles.css": "./src/service-menu/service-menu.css"
+    "./styles.css": "./src/service-menu/service-menu.css",
+    "./notification-bell.css": "./src/notification-bell/notification-bell.css"
   },
   "files": [
     "src",
